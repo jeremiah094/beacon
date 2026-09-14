@@ -15,6 +15,7 @@ export type Database = {
           league_id: string
           lineup_locked_at: string | null
           lobby_code: string | null
+          round_number: number
           scheduled_at: string
           status: string
         }
@@ -24,6 +25,7 @@ export type Database = {
           league_id: string
           lineup_locked_at?: string | null
           lobby_code?: string | null
+          round_number?: number
           scheduled_at: string
           status?: string
         }
@@ -33,6 +35,7 @@ export type Database = {
           league_id?: string
           lineup_locked_at?: string | null
           lobby_code?: string | null
+          round_number?: number
           scheduled_at?: string
           status?: string
         }
@@ -99,11 +102,13 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          entry_rules: string | null
           format: string
           id: string
           name: string
           region: string
           season_end: string | null
+          season_label: string | null
           season_start: string | null
           status: string
           teams_per_lobby: number
@@ -111,11 +116,13 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          entry_rules?: string | null
           format?: string
           id?: string
           name: string
           region?: string
           season_end?: string | null
+          season_label?: string | null
           season_start?: string | null
           status?: string
           teams_per_lobby?: number
@@ -123,11 +130,13 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          entry_rules?: string | null
           format?: string
           id?: string
           name?: string
           region?: string
           season_end?: string | null
+          season_label?: string | null
           season_start?: string | null
           status?: string
           teams_per_lobby?: number

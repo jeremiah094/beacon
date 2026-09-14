@@ -14,6 +14,16 @@ export function formatRelativeTime(input: Date | string, now: Date = new Date())
   return days === 1 ? '1 DAY AGO' : `${days} DAYS AGO`;
 }
 
+/** "14 Sep – 21 Dec 2026" — season date ranges. */
+export function formatDateRange(startIso: string | null, endIso: string | null): string {
+  if (!startIso || !endIso) return '';
+  const start = new Date(startIso);
+  const end = new Date(endIso);
+  const day = (d: Date) => d.toLocaleDateString('en-IE', { day: 'numeric', month: 'short' });
+  const withYear = (d: Date) => d.toLocaleDateString('en-IE', { day: 'numeric', month: 'short', year: 'numeric' });
+  return `${day(start)} – ${withYear(end)}`;
+}
+
 /** mm:ss for countdowns — hh:mm:ss once an hour or more remains. */
 export function formatCountdown(msRemaining: number): string {
   const totalSeconds = Math.max(0, Math.floor(msRemaining / 1000));
