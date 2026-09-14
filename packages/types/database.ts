@@ -414,6 +414,91 @@ export type Database = {
           },
         ]
       }
+      substitution_requests: {
+        Row: {
+          decided_at: string | null
+          decided_by: string | null
+          game_id: string
+          id: string
+          in_profile_id: string
+          out_profile_id: string
+          reason: string | null
+          requested_at: string
+          requested_by: string
+          status: string
+          team_id: string
+        }
+        Insert: {
+          decided_at?: string | null
+          decided_by?: string | null
+          game_id: string
+          id?: string
+          in_profile_id: string
+          out_profile_id: string
+          reason?: string | null
+          requested_at?: string
+          requested_by: string
+          status?: string
+          team_id: string
+        }
+        Update: {
+          decided_at?: string | null
+          decided_by?: string | null
+          game_id?: string
+          id?: string
+          in_profile_id?: string
+          out_profile_id?: string
+          reason?: string | null
+          requested_at?: string
+          requested_by?: string
+          status?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "substitution_requests_decided_by_fkey"
+            columns: ["decided_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "substitution_requests_game_id_fkey"
+            columns: ["game_id"]
+            isOneToOne: false
+            referencedRelation: "games"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "substitution_requests_in_profile_id_fkey"
+            columns: ["in_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "substitution_requests_out_profile_id_fkey"
+            columns: ["out_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "substitution_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "substitution_requests_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       substitutions: {
         Row: {
           applied_at: string

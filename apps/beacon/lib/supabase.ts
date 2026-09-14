@@ -17,9 +17,23 @@ if (!url || !publishableKey) {
   );
 }
 
+// @react-native-async-storage/async-storage's web shim reads `window` at
+// call time, which doesn't exist during Node-side static rendering (the
+// web export's route prerender pass). Supabase's GoTrueClient touches
+// storage the moment it's constructed (session recovery), so any route
+// that imports this module — directly or transitively — crashes the
+// export. There's no real session to recover during SSR anyway, so a
+// no-op storage there is correct, not just a workaround.
+const noopStorage = {
+  getItem: async () => null,
+  setItem: async () => {},
+  removeItem: async () => {},
+};
+const storage = typeof window === 'undefined' ? noopStorage : AsyncStorage;
+
 export const supabase = createClient<Database>(url, publishableKey, {
   auth: {
-    storage: AsyncStorage,
+    storage,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,
