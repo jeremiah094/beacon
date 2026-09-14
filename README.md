@@ -51,11 +51,19 @@ npm run submit:production     # after a production build, submits to the app sto
 
 ## Web deploy
 
-`app.json` is configured for static export (`web.output: "static"`). Build with:
+`app.json` is configured for static export (`web.output: "static"`). The same build serves both the player routes and the `(admin)` console — there's no separate admin deployment.
+
+**Via EAS Hosting** (needs the same `eas login` as the mobile builds above):
+
+```
+cd apps/beacon
+npm run deploy:web            # expo export --platform web && eas deploy — prints a preview URL
+npm run deploy:web:prod       # same, but --prod (stable production URL / custom domain)
+```
+
+**Via any other static host** — build once, deploy `dist/` anywhere (Cloudflare Pages, Netlify, Vercel, S3 + CloudFront, etc):
 
 ```
 cd apps/beacon
 npm run web:build             # writes apps/beacon/dist
 ```
-
-`dist/` is a static site — deploy it to any static host (Cloudflare Pages, Netlify, Vercel, S3 + CloudFront, etc). The same build serves both the player routes and the `(admin)` console; there's no separate admin deployment.

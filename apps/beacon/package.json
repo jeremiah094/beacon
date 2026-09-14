@@ -40,6 +40,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "web:build": "expo export --platform web",
+    "deploy:web": "expo export --platform web && eas deploy",
+    "deploy:web:prod": "expo export --platform web && eas deploy --prod",
     "build:development": "eas build --profile development --platform all",
     "build:preview": "eas build --profile preview --platform all",
     "build:production": "eas build --profile production --platform all",
