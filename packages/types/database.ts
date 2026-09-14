@@ -15,6 +15,7 @@ export type Database = {
           league_id: string
           lineup_locked_at: string | null
           lobby_code: string | null
+          map: string | null
           round_number: number
           scheduled_at: string
           status: string
@@ -25,6 +26,7 @@ export type Database = {
           league_id: string
           lineup_locked_at?: string | null
           lobby_code?: string | null
+          map?: string | null
           round_number?: number
           scheduled_at: string
           status?: string
@@ -35,6 +37,7 @@ export type Database = {
           league_id?: string
           lineup_locked_at?: string | null
           lobby_code?: string | null
+          map?: string | null
           round_number?: number
           scheduled_at?: string
           status?: string
