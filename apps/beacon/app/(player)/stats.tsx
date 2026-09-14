@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
+import { BottomNav } from '../../components/BottomNav';
 import { CornerCut } from '../../components/CornerCut';
 import { Diamond } from '../../components/Diamond';
 import { Spinner } from '../../components/Spinner';
@@ -24,10 +25,11 @@ export default function StatsDashboard() {
 
   if (isLoading || !data) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.loadingBox}>
           <Spinner size={20} />
         </View>
+        <BottomNav active="stats" />
       </SafeAreaView>
     );
   }
@@ -172,6 +174,8 @@ export default function StatsDashboard() {
         </Pressable>
         <Text style={styles.footerNote}>You can hold up to three teams across divisions.</Text>
       </View>
+
+      <BottomNav active="stats" />
     </SafeAreaView>
   );
 }

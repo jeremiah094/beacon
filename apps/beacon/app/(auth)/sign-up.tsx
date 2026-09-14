@@ -11,7 +11,7 @@ import { Spinner } from '../../components/Spinner';
 import { CornerCut } from '../../components/CornerCut';
 import { color, fontFamily } from '../../theme/tokens';
 import { supabase } from '../../lib/supabase';
-import { ApexLinkStats, ApexPlatform, linkApexId } from '../../lib/api/apexLink';
+import { ApexLinkStats, ApexPlatform, PLATFORM_OPTIONS, linkApexId } from '../../lib/api/apexLink';
 
 // Reference: Beacon 01 Sign Up.dc.html. The prototype's phase machine
 // (form/verifying/verified) is preserved; `confirmEmail` is added because
@@ -20,12 +20,6 @@ import { ApexLinkStats, ApexPlatform, linkApexId } from '../../lib/api/apexLink'
 type Phase = 'form' | 'confirmEmail' | 'linking' | 'verifying' | 'verified';
 type IdType = 'ea' | 'apex';
 type Mode = 'signUp' | 'signIn';
-
-const PLATFORM_OPTIONS: { value: ApexPlatform; label: string }[] = [
-  { value: 'PC', label: 'PC' },
-  { value: 'PS4', label: 'PlayStation' },
-  { value: 'X1', label: 'Xbox' },
-];
 
 export default function SignUp() {
   const [mode, setMode] = useState<Mode>('signIn');

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
+import { BottomNav } from '../../../components/BottomNav';
 import { CornerCut } from '../../../components/CornerCut';
 import { Diamond } from '../../../components/Diamond';
 import { Spinner } from '../../../components/Spinner';
@@ -148,6 +149,8 @@ export default function MyTeams() {
           )}
         </Pressable>
       </View>
+
+      <BottomNav active="teams" />
     </SafeAreaView>
   );
 }

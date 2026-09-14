@@ -2,6 +2,12 @@ import { supabase } from '../supabase';
 
 export type ApexPlatform = 'PC' | 'X1' | 'PS4';
 
+export const PLATFORM_OPTIONS: { value: ApexPlatform; label: string }[] = [
+  { value: 'PC', label: 'PC' },
+  { value: 'PS4', label: 'PlayStation' },
+  { value: 'X1', label: 'Xbox' },
+];
+
 export type ApexLinkFailureReason = 'not_found' | 'platform_mismatch' | 'rate_limited' | 'upstream_down';
 
 export type ApexLinkStats = {

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { BottomNav } from '../../../components/BottomNav';
 import { CornerCut } from '../../../components/CornerCut';
 import { Spinner } from '../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../theme/tokens';
@@ -66,6 +67,8 @@ export default function LeagueHub() {
           </View>
         )}
       </ScrollView>
+
+      <BottomNav active="leagues" />
     </SafeAreaView>
   );
 }

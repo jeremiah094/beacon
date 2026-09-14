@@ -1,6 +1,7 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { BottomNav } from '../../../components/BottomNav';
 import { CornerCut } from '../../../components/CornerCut';
 import { Spinner } from '../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../theme/tokens';
@@ -23,10 +24,11 @@ export default function UpcomingGames() {
 
   if (isLoading || !data) {
     return (
-      <SafeAreaView style={styles.safe}>
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.loadingBox}>
           <Spinner size={20} />
         </View>
+        <BottomNav active="games" />
       </SafeAreaView>
     );
   }
@@ -101,6 +103,8 @@ export default function UpcomingGames() {
             : `${mutedCount} game${mutedCount === 1 ? '' : 's'} muted · league-wide notifications stay on.`}
         </Text>
       </View>
+
+      <BottomNav active="games" />
     </SafeAreaView>
   );
 }
