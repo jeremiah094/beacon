@@ -29,8 +29,9 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env
+# local env files — .env itself is committed (Supabase URL + publishable
+# key are safe to ship client-side; RLS is the real gate). Only *.local
+# overrides and anything holding real secrets stay untracked.
 .env.local
 .env*.local
 
