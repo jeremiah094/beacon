@@ -16,9 +16,9 @@ Notifications.setNotificationHandler({
 });
 
 /** Registers this device for push and upserts the Expo push token into
- * push_tokens (BUILD.md §5) — call once per authenticated session. Needs
- * extra.eas.projectId (set once EAS is configured — task 10); no-ops
- * gracefully until then rather than throwing. */
+ * push_tokens (BUILD.md §5) — call once per authenticated session. Reads
+ * extra.eas.projectId (app.json); no-ops gracefully rather than throwing
+ * if that's ever missing (e.g. a fork that hasn't linked its own project). */
 export function usePushRegistration(userId: string | undefined) {
   useEffect(() => {
     // Web push needs its own VAPID setup (out of scope — BUILD.md's push

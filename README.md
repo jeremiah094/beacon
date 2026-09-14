@@ -28,21 +28,13 @@ npm run web                 # or: npm run ios / npm run android
 
 ## Mobile builds (EAS)
 
-`apps/beacon/eas.json` defines three build profiles — `development` (dev client, internal distribution), `preview` (internal, Android APK), and `production` (store-ready).
+`apps/beacon/eas.json` defines three build profiles — `development` (dev client, internal distribution), `preview` (internal, Android APK), and `production` (store-ready). The project is already linked to EAS (`extra.eas.projectId` in `app.json`), so push notification registration (`lib/hooks/usePushRegistration.ts`) is live — no further setup needed there.
 
-This repo doesn't include an EAS project binding (`extra.eas.projectId` in `app.json`) — that has to be created once, interactively, by whoever owns the Expo account:
+To build, sign in with whichever Expo account owns that project, then run the npm scripts (each runs `eas build` under the hood):
 
 ```
 cd apps/beacon
 npx eas-cli login
-npx eas-cli init              # creates/links the EAS project, writes extra.eas.projectId
-```
-
-Once that's done, push notification registration (`lib/hooks/usePushRegistration.ts`) picks up the project ID automatically — no code changes needed; until then it no-ops rather than throwing.
-
-Then build with the npm scripts (each runs `eas build` under the hood):
-
-```
 npm run build:development
 npm run build:preview
 npm run build:production
@@ -67,8 +59,6 @@ npm run deploy:web:prod       # same, but --prod (stable production URL / custom
 2. Add it as a repo secret: GitHub → this repo → **Settings → Secrets and variables → Actions → New repository secret** → name it `EXPO_TOKEN`, paste the token, save. (Never paste this token into a chat with an AI — the GitHub secrets UI is the only place it should go.)
 3. Go to the **Actions** tab → **Deploy web (EAS Hosting)** → **Run workflow**. Check "Deploy to the production alias" for a stable URL, leave it unchecked for a preview URL.
 4. Watch the run; the deploy step's log prints the URL EAS Hosting assigned.
-
-The first run also links the repo to an EAS project (writes `extra.eas.projectId` into `app.json` and commits it back) — after that, push notification registration works automatically too.
 
 **Via any other static host** — build once, deploy `dist/` anywhere (Cloudflare Pages, Netlify, Vercel, S3 + CloudFront, etc):
 
