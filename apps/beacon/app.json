@@ -28,7 +28,15 @@
       "bundler": "metro",
       "output": "static"
     },
-    "plugins": ["expo-router", ["expo-notifications", { "color": "#FF5A36" }]],
+    "plugins": [
+      "expo-router",
+      [
+        "expo-notifications",
+        {
+          "color": "#FF5A36"
+        }
+      ]
+    ],
     "experiments": {
       "typedRoutes": true
     },
@@ -37,6 +45,7 @@
       "eas": {
         "projectId": "8e9bbfaa-6fb8-4aeb-af68-7d2d05f39bac"
       }
-    }
+    },
+    "owner": "heronymoustreams"
   }
 }
