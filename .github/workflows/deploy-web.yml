@@ -1,0 +1,50 @@
+name: Deploy web (EAS Hosting)
+
+on:
+  workflow_dispatch:
+    inputs:
+      prod:
+        description: "Deploy to the production alias"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - name: Link EAS project
+        working-directory: apps/beacon
+        run: npx eas-cli init --non-interactive --force
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Commit EAS project link, if it changed
+        run: |
+          if ! git diff --quiet -- apps/beacon/app.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add apps/beacon/app.json
+            git commit -m "Link EAS project (automated)"
+            git push
+          fi
+
+      - name: Export web build
+        working-directory: apps/beacon
+        run: npx expo export --platform web
+
+      - name: Deploy to EAS Hosting
+        working-directory: apps/beacon
+        run: npx eas-cli deploy --non-interactive ${{ github.event.inputs.prod == 'true' && '--prod' || '' }}
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

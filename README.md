@@ -53,13 +53,22 @@ npm run submit:production     # after a production build, submits to the app sto
 
 `app.json` is configured for static export (`web.output: "static"`). The same build serves both the player routes and the `(admin)` console — there's no separate admin deployment.
 
-**Via EAS Hosting** (needs the same `eas login` as the mobile builds above):
+**Via EAS Hosting, from a terminal** (needs the same `eas login` as the mobile builds above):
 
 ```
 cd apps/beacon
 npm run deploy:web            # expo export --platform web && eas deploy — prints a preview URL
 npm run deploy:web:prod       # same, but --prod (stable production URL / custom domain)
 ```
+
+**Via EAS Hosting, with no terminal** — `.github/workflows/deploy-web.yml` runs the same deploy on GitHub's runners (which have normal internet access, unlike this sandbox). One-time setup, entirely in a browser:
+
+1. Create a token at [expo.dev/settings/access-tokens](https://expo.dev/settings/access-tokens).
+2. Add it as a repo secret: GitHub → this repo → **Settings → Secrets and variables → Actions → New repository secret** → name it `EXPO_TOKEN`, paste the token, save. (Never paste this token into a chat with an AI — the GitHub secrets UI is the only place it should go.)
+3. Go to the **Actions** tab → **Deploy web (EAS Hosting)** → **Run workflow**. Check "Deploy to the production alias" for a stable URL, leave it unchecked for a preview URL.
+4. Watch the run; the deploy step's log prints the URL EAS Hosting assigned.
+
+The first run also links the repo to an EAS project (writes `extra.eas.projectId` into `app.json` and commits it back) — after that, push notification registration works automatically too.
 
 **Via any other static host** — build once, deploy `dist/` anywhere (Cloudflare Pages, Netlify, Vercel, S3 + CloudFront, etc):
 
