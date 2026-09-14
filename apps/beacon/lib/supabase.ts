@@ -31,11 +31,18 @@ const noopStorage = {
 };
 const storage = typeof window === 'undefined' ? noopStorage : AsyncStorage;
 
+// Web needs this on to pick up the session Supabase attaches to the URL
+// when a user returns from an email-confirmation redirect — without it,
+// getSession() never sees a session and screen 01's "I've confirmed —
+// continue" step waits forever. Native has no browser URL for a session
+// to arrive in, so this is a no-op there either way.
+const detectSessionInUrl = typeof window !== 'undefined';
+
 export const supabase = createClient<Database>(url, publishableKey, {
   auth: {
     storage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    detectSessionInUrl,
   },
 });

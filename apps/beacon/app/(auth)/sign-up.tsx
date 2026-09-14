@@ -19,6 +19,7 @@ import { ApexLinkStats, ApexPlatform, linkApexId } from '../../lib/api/apexLink'
 // confirmation before a session exists to attribute the Apex link to.
 type Phase = 'form' | 'confirmEmail' | 'verifying' | 'verified';
 type IdType = 'ea' | 'apex';
+type Mode = 'signUp' | 'signIn';
 
 const PLATFORM_OPTIONS: { value: ApexPlatform; label: string }[] = [
   { value: 'PC', label: 'PC' },
@@ -27,6 +28,7 @@ const PLATFORM_OPTIONS: { value: ApexPlatform; label: string }[] = [
 ];
 
 export default function SignUp() {
+  const [mode, setMode] = useState<Mode>('signUp');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [idType, setIdType] = useState<IdType>('ea');
@@ -37,13 +39,14 @@ export default function SignUp() {
   const [linkError, setLinkError] = useState<string | null>(null);
   const [stats, setStats] = useState<ApexLinkStats | null>(null);
 
+  const isSignIn = mode === 'signIn';
   const isEa = idType === 'ea';
   const gamerIdShown = gamerId.trim() || 'your account';
 
   const missing: string[] = [];
   if (!/^\S+@\S+\.\S+$/.test(email)) missing.push('a valid email address');
   if (password.length < 8) missing.push('a password of 8 characters or more');
-  if (gamerId.trim().length < 3) missing.push(isEa ? 'your EA Play ID' : 'your Apex Legends ID');
+  if (!isSignIn && gamerId.trim().length < 3) missing.push(isEa ? 'your EA Play ID' : 'your Apex Legends ID');
   const ready = missing.length === 0;
 
   let blockedReason = '';
@@ -66,10 +69,20 @@ export default function SignUp() {
   }
 
   async function handlePrimary() {
-    if (phase === 'form') {
+    if (phase === 'form' && isSignIn) {
       if (!ready) return;
       setAuthError(null);
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        setAuthError(error.message);
+        return;
+      }
+      router.replace('/(player)/stats');
+    } else if (phase === 'form') {
+      if (!ready) return;
+      setAuthError(null);
+      const emailRedirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+      const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo } });
       if (error) {
         setAuthError(error.message);
         return;
@@ -98,7 +111,7 @@ export default function SignUp() {
     setStats(null);
   }
 
-  const primary = primaryFor(phase, ready);
+  const primary = primaryFor(phase, ready, isSignIn);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -134,8 +147,15 @@ export default function SignUp() {
                   style={styles.bareInput}
                 />
               </View>
+              <Pressable onPress={() => { setMode(isSignIn ? 'signUp' : 'signIn'); setAuthError(null); }}>
+                <Text style={styles.modeToggle}>
+                  {isSignIn ? "Need an account? " : 'Already have an account? '}
+                  <Text style={{ color: color.textPrimary }}>{isSignIn ? 'Create one' : 'Sign in'}</Text>
+                </Text>
+              </Pressable>
             </View>
 
+            {!isSignIn && (
             <HudPanel contentStyle={{ padding: 20, gap: 16 }}>
               <View style={styles.linkHeaderRow}>
                 <Text style={[styles.eyebrow, { color: color.textPrimary }]}>Link your gaming ID</Text>
@@ -188,6 +208,7 @@ export default function SignUp() {
                 <Text style={styles.verifiedFooterLabel}>STATS FROM A LINKED ACCOUNT CARRY THIS MARK</Text>
               </View>
             </HudPanel>
+            )}
           </View>
         )}
 
@@ -264,7 +285,7 @@ export default function SignUp() {
           )}
         </Pressable>
 
-        {phase === 'form' && (
+        {phase === 'form' && !isSignIn && (
           <Text style={styles.finePrint}>
             Continuing links your EA account data to Beacon for stat verification. We read match and rank
             data only, and never post on your behalf.
@@ -280,7 +301,7 @@ export default function SignUp() {
   );
 }
 
-function primaryFor(phase: Phase, ready: boolean) {
+function primaryFor(phase: Phase, ready: boolean, isSignIn: boolean) {
   if (phase === 'verifying') {
     return {
       label: 'Verifying…',
@@ -313,9 +334,10 @@ function primaryFor(phase: Phase, ready: boolean) {
     };
   }
   // form
+  const label = isSignIn ? 'Sign in' : 'Create account';
   return ready
     ? {
-        label: 'Create account',
+        label,
         bg: color.textPrimary,
         fg: color.base,
         border: color.textPrimary,
@@ -324,7 +346,7 @@ function primaryFor(phase: Phase, ready: boolean) {
         disabled: false,
       }
     : {
-        label: 'Create account',
+        label,
         bg: color.fillMuted,
         fg: 'rgba(242,241,236,0.35)',
         border: color.fillMutedBorder,
@@ -344,6 +366,7 @@ const styles = StyleSheet.create({
     color: color.textPrimary,
   },
   tagline: { fontFamily: fontFamily.interRegular, fontSize: 14, color: color.textMuted },
+  modeToggle: { fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted },
   eyebrow: {
     fontFamily: fontFamily.interSemiBold,
     fontSize: 11,
