@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import * as ClipboardAPI from 'expo-clipboard';
 import { AdminShell } from '../../../../components/admin/AdminShell';
 import { AdminButton } from '../../../../components/admin/AdminButton';
 import { AdminChip } from '../../../../components/admin/AdminChip';
@@ -98,11 +99,9 @@ export default function MonitorLiveMatch() {
     await decideSub.mutateAsync({ requestId: t.pendingSub.requestId, teamId: t.teamId, approve: false, adminId: userId });
   }
 
-  function copyCode() {
+  async function copyCode() {
     if (!game?.lobbyCode) return;
-    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(game.lobbyCode).catch(() => {});
-    }
+    await ClipboardAPI.setStringAsync(game.lobbyCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 3000);
   }
