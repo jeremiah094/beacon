@@ -28,7 +28,7 @@
       "bundler": "metro",
       "output": "static"
     },
-    "plugins": ["expo-router"],
+    "plugins": ["expo-router", ["expo-notifications", { "color": "#FF5A36" }]],
     "experiments": {
       "typedRoutes": true
     },

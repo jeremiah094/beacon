@@ -17,6 +17,8 @@ import {
   Inter_600SemiBold,
 } from '@expo-google-fonts/inter';
 import { color } from '../theme/tokens';
+import { useSession } from '../lib/hooks/useSession';
+import { useNotificationDeepLinks, usePushRegistration } from '../lib/hooks/usePushRegistration';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -54,6 +56,7 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <StatusBar style="light" />
+        <AppShell />
         <Stack
           screenOptions={{
             headerShown: false,
@@ -63,4 +66,13 @@ export default function RootLayout() {
       </SafeAreaProvider>
     </QueryClientProvider>
   );
+}
+
+/** Session-scoped setup that has to live inside the providers above but
+ * outside any one screen: push registration and notification-tap routing. */
+function AppShell() {
+  const { userId } = useSession();
+  usePushRegistration(userId);
+  useNotificationDeepLinks();
+  return null;
 }
