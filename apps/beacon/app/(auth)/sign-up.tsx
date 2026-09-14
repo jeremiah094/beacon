@@ -28,7 +28,7 @@ const PLATFORM_OPTIONS: { value: ApexPlatform; label: string }[] = [
 ];
 
 export default function SignUp() {
-  const [mode, setMode] = useState<Mode>('signUp');
+  const [mode, setMode] = useState<Mode>('signIn');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [idType, setIdType] = useState<IdType>('ea');
