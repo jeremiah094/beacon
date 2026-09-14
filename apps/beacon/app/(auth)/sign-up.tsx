@@ -17,7 +17,7 @@ import { ApexLinkStats, ApexPlatform, linkApexId } from '../../lib/api/apexLink'
 // (form/verifying/verified) is preserved; `confirmEmail` is added because
 // this build talks to real Supabase auth, where sign-up may require email
 // confirmation before a session exists to attribute the Apex link to.
-type Phase = 'form' | 'confirmEmail' | 'verifying' | 'verified';
+type Phase = 'form' | 'confirmEmail' | 'linking' | 'verifying' | 'verified';
 type IdType = 'ea' | 'apex';
 type Mode = 'signUp' | 'signIn';
 
@@ -43,10 +43,14 @@ export default function SignUp() {
   const isEa = idType === 'ea';
   const gamerIdShown = gamerId.trim() || 'your account';
 
+  const linkReady = gamerId.trim().length >= 3;
+
   const missing: string[] = [];
-  if (!/^\S+@\S+\.\S+$/.test(email)) missing.push('a valid email address');
-  if (password.length < 8) missing.push('a password of 8 characters or more');
-  if (!isSignIn && gamerId.trim().length < 3) missing.push(isEa ? 'your EA Play ID' : 'your Apex Legends ID');
+  if (phase !== 'linking') {
+    if (!/^\S+@\S+\.\S+$/.test(email)) missing.push('a valid email address');
+    if (password.length < 8) missing.push('a password of 8 characters or more');
+  }
+  if ((phase === 'linking' || !isSignIn) && !linkReady) missing.push(isEa ? 'your EA Play ID' : 'your Apex Legends ID');
   const ready = missing.length === 0;
 
   let blockedReason = '';
@@ -55,7 +59,7 @@ export default function SignUp() {
     blockedReason = `Still needed: ${missing.slice(0, -1).join(', ')} and ${missing[missing.length - 1]}.`;
   }
 
-  async function runLink() {
+  async function runLink(onFailurePhase: Phase = 'form') {
     setPhase('verifying');
     setLinkError(null);
     const result = await linkApexId(gamerId.trim(), platform);
@@ -64,7 +68,7 @@ export default function SignUp() {
       setPhase('verified');
     } else {
       setLinkError(result.message);
-      setPhase('form');
+      setPhase(onFailurePhase);
     }
   }
 
@@ -72,12 +76,23 @@ export default function SignUp() {
     if (phase === 'form' && isSignIn) {
       if (!ready) return;
       setAuthError(null);
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) {
         setAuthError(error.message);
         return;
       }
-      router.replace('/(player)/stats');
+      const userId = data.user?.id;
+      const { data: profile } = userId
+        ? await supabase.from('profiles').select('apex_verified_at').eq('id', userId).maybeSingle()
+        : { data: null };
+      if (profile?.apex_verified_at) {
+        router.replace('/(player)/stats');
+      } else {
+        // Confirmed and signed in, but never finished linking a gaming ID
+        // (exactly what happens if email confirmation got interrupted) —
+        // send them to finish that step rather than a dead end.
+        setPhase('linking');
+      }
     } else if (phase === 'form') {
       if (!ready) return;
       setAuthError(null);
@@ -99,6 +114,9 @@ export default function SignUp() {
       } else {
         setAuthError('Still waiting on that confirmation — check your inbox, then try again.');
       }
+    } else if (phase === 'linking') {
+      if (!linkReady) return;
+      await runLink('linking');
     } else if (phase === 'verified') {
       router.replace('/(player)/stats');
     }
@@ -156,59 +174,32 @@ export default function SignUp() {
             </View>
 
             {!isSignIn && (
-            <HudPanel contentStyle={{ padding: 20, gap: 16 }}>
-              <View style={styles.linkHeaderRow}>
-                <Text style={[styles.eyebrow, { color: color.textPrimary }]}>Link your gaming ID</Text>
-                <View style={styles.requiredChip}>
-                  <Text style={styles.requiredChipLabel}>REQUIRED</Text>
-                </View>
-              </View>
-
-              <Text style={styles.linkCopy}>
-                Beacon reads your rank, K/D and wins straight from your account, so every stat in the
-                league is verified rather than self-reported. It also confirms you're eligible to play.
-              </Text>
-
-              <SegmentedControl
-                height={44}
-                options={[
-                  { value: 'ea', label: 'EA Play ID' },
-                  { value: 'apex', label: 'Apex Legends ID' },
-                ]}
-                value={idType}
-                onChange={setIdType}
+              <GamingIdPanel
+                idType={idType}
+                setIdType={setIdType}
+                platform={platform}
+                setPlatform={setPlatform}
+                gamerId={gamerId}
+                setGamerId={setGamerId}
               />
-
-              <View style={{ gap: 8 }}>
-                <Text style={styles.platformLabel}>Platform</Text>
-                <SegmentedControl height={40} options={PLATFORM_OPTIONS} value={platform} onChange={setPlatform} />
-                <Text style={styles.helpText}>
-                  Whichever platform your account is actually on — cross-play doesn't change which one holds your stats.
-                </Text>
-              </View>
-
-              <View style={{ gap: 8 }}>
-                <TextInput
-                  value={gamerId}
-                  onChangeText={setGamerId}
-                  placeholder={isEa ? 'EA Play ID · e.g. VipersKane_IE' : 'Apex Legends ID · e.g. VipersKane'}
-                  autoCapitalize="none"
-                  placeholderTextColor={color.fillPlaceholder}
-                  style={[styles.bareInput, { backgroundColor: color.base }]}
-                />
-                <Text style={styles.helpText}>
-                  {isEa
-                    ? 'Found in the EA app under your profile name.'
-                    : 'Shown in the top-left of the Apex Legends lobby, under your banner.'}
-                </Text>
-              </View>
-
-              <View style={styles.verifiedFooterRow}>
-                <Diamond size={8} color={color.verified} />
-                <Text style={styles.verifiedFooterLabel}>STATS FROM A LINKED ACCOUNT CARRY THIS MARK</Text>
-              </View>
-            </HudPanel>
             )}
+          </View>
+        )}
+
+        {phase === 'linking' && (
+          <View style={{ gap: 22, paddingTop: 12 }}>
+            <Text style={styles.heading}>One step left</Text>
+            <Text style={styles.bodyCopy}>
+              Your email's confirmed — now link a gaming ID so your stats are read, not entered by hand.
+            </Text>
+            <GamingIdPanel
+              idType={idType}
+              setIdType={setIdType}
+              platform={platform}
+              setPlatform={setPlatform}
+              gamerId={gamerId}
+              setGamerId={setGamerId}
+            />
           </View>
         )}
 
@@ -257,7 +248,7 @@ export default function SignUp() {
       </ScrollView>
 
       <View style={styles.dockedFooter}>
-        {phase === 'form' && !ready ? (
+        {(phase === 'form' || phase === 'linking') && !ready ? (
           <View style={styles.noteRow}>
             <View style={styles.noteBar} />
             <Text style={styles.noteText}>{blockedReason}</Text>
@@ -333,6 +324,25 @@ function primaryFor(phase: Phase, ready: boolean, isSignIn: boolean) {
       disabled: false,
     };
   }
+  if (phase === 'linking') {
+    return ready
+      ? {
+          label: 'Link account',
+          bg: color.textPrimary,
+          fg: color.base,
+          border: color.textPrimary,
+          hoverBg: color.fillHover,
+          activeBg: color.fillActive,
+          disabled: false,
+        }
+      : {
+          label: 'Link account',
+          bg: color.fillMuted,
+          fg: 'rgba(242,241,236,0.35)',
+          border: color.fillMutedBorder,
+          disabled: true,
+        };
+  }
   // form
   const label = isSignIn ? 'Sign in' : 'Create account';
   return ready
@@ -352,6 +362,78 @@ function primaryFor(phase: Phase, ready: boolean, isSignIn: boolean) {
         border: color.fillMutedBorder,
         disabled: true,
       };
+}
+
+function GamingIdPanel({
+  idType,
+  setIdType,
+  platform,
+  setPlatform,
+  gamerId,
+  setGamerId,
+}: {
+  idType: IdType;
+  setIdType: (v: IdType) => void;
+  platform: ApexPlatform;
+  setPlatform: (v: ApexPlatform) => void;
+  gamerId: string;
+  setGamerId: (v: string) => void;
+}) {
+  const isEa = idType === 'ea';
+  return (
+    <HudPanel contentStyle={{ padding: 20, gap: 16 }}>
+      <View style={styles.linkHeaderRow}>
+        <Text style={[styles.eyebrow, { color: color.textPrimary }]}>Link your gaming ID</Text>
+        <View style={styles.requiredChip}>
+          <Text style={styles.requiredChipLabel}>REQUIRED</Text>
+        </View>
+      </View>
+
+      <Text style={styles.linkCopy}>
+        Beacon reads your rank, K/D and wins straight from your account, so every stat in the league is
+        verified rather than self-reported. It also confirms you're eligible to play.
+      </Text>
+
+      <SegmentedControl
+        height={44}
+        options={[
+          { value: 'ea', label: 'EA Play ID' },
+          { value: 'apex', label: 'Apex Legends ID' },
+        ]}
+        value={idType}
+        onChange={setIdType}
+      />
+
+      <View style={{ gap: 8 }}>
+        <Text style={styles.platformLabel}>Platform</Text>
+        <SegmentedControl height={40} options={PLATFORM_OPTIONS} value={platform} onChange={setPlatform} />
+        <Text style={styles.helpText}>
+          Whichever platform your account is actually on — cross-play doesn't change which one holds your stats.
+        </Text>
+      </View>
+
+      <View style={{ gap: 8 }}>
+        <TextInput
+          value={gamerId}
+          onChangeText={setGamerId}
+          placeholder={isEa ? 'EA Play ID · e.g. VipersKane_IE' : 'Apex Legends ID · e.g. VipersKane'}
+          autoCapitalize="none"
+          placeholderTextColor={color.fillPlaceholder}
+          style={[styles.bareInput, { backgroundColor: color.base }]}
+        />
+        <Text style={styles.helpText}>
+          {isEa
+            ? 'Found in the EA app under your profile name.'
+            : 'Shown in the top-left of the Apex Legends lobby, under your banner.'}
+        </Text>
+      </View>
+
+      <View style={styles.verifiedFooterRow}>
+        <Diamond size={8} color={color.verified} />
+        <Text style={styles.verifiedFooterLabel}>STATS FROM A LINKED ACCOUNT CARRY THIS MARK</Text>
+      </View>
+    </HudPanel>
+  );
 }
 
 const styles = StyleSheet.create({
