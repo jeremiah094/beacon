@@ -1,8 +1,16 @@
 // Generated via mcp__Supabase__generate_typescript_types — do not hand-edit.
 // Regenerate after any schema migration (project: beacon / mcjxelzimstpebomjvqk).
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -57,6 +65,7 @@ export type Database = {
           decided_at: string | null
           decided_by: string | null
           league_id: string
+          registered_at: string
           rejection_reason: string | null
           status: string
           team_id: string
@@ -65,6 +74,7 @@ export type Database = {
           decided_at?: string | null
           decided_by?: string | null
           league_id: string
+          registered_at?: string
           rejection_reason?: string | null
           status?: string
           team_id: string
@@ -73,6 +83,7 @@ export type Database = {
           decided_at?: string | null
           decided_by?: string | null
           league_id?: string
+          registered_at?: string
           rejection_reason?: string | null
           status?: string
           team_id?: string
@@ -669,6 +680,7 @@ export type Database = {
       }
     }
     Functions: {
+      lock_overdue_lineups: { Args: never; Returns: undefined }
       placement_points: { Args: { p_placement: number }; Returns: number }
     }
     Enums: {
@@ -681,6 +693,7 @@ export type Database = {
 }
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
@@ -760,6 +773,40 @@ export type TablesUpdate<
       }
       ? U
       : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
 export const Constants = {

@@ -24,6 +24,12 @@ export function formatDateRange(startIso: string | null, endIso: string | null):
   return `${day(start)} – ${withYear(end)}`;
 }
 
+/** "2 Sep 09:14" — admin console timestamps (registration, scheduling). */
+export function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-IE', { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('en-IE', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
 /** mm:ss for countdowns — hh:mm:ss once an hour or more remains. */
 export function formatCountdown(msRemaining: number): string {
   const totalSeconds = Math.max(0, Math.floor(msRemaining / 1000));

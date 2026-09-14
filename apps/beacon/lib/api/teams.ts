@@ -115,7 +115,7 @@ export function useCreateTeam(userId: string | undefined) {
       if (joinLeagueId) {
         const { error: regError } = await supabase
           .from('league_teams')
-          .insert({ league_id: joinLeagueId, team_id: team.id, status: 'pending' });
+          .insert({ league_id: joinLeagueId, team_id: team.id, status: 'pending', registered_at: new Date().toISOString() });
         if (regError) throw regError;
       }
 
