@@ -11,7 +11,7 @@ import { Spinner } from '../../components/Spinner';
 import { CornerCut } from '../../components/CornerCut';
 import { color, fontFamily } from '../../theme/tokens';
 import { supabase } from '../../lib/supabase';
-import { ApexLinkStats, linkApexId } from '../../lib/api/apexLink';
+import { ApexLinkStats, ApexPlatform, linkApexId } from '../../lib/api/apexLink';
 
 // Reference: Beacon 01 Sign Up.dc.html. The prototype's phase machine
 // (form/verifying/verified) is preserved; `confirmEmail` is added because
@@ -20,10 +20,17 @@ import { ApexLinkStats, linkApexId } from '../../lib/api/apexLink';
 type Phase = 'form' | 'confirmEmail' | 'verifying' | 'verified';
 type IdType = 'ea' | 'apex';
 
+const PLATFORM_OPTIONS: { value: ApexPlatform; label: string }[] = [
+  { value: 'PC', label: 'PC' },
+  { value: 'PS4', label: 'PlayStation' },
+  { value: 'X1', label: 'Xbox' },
+];
+
 export default function SignUp() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [idType, setIdType] = useState<IdType>('ea');
+  const [platform, setPlatform] = useState<ApexPlatform>('PC');
   const [gamerId, setGamerId] = useState('');
   const [phase, setPhase] = useState<Phase>('form');
   const [authError, setAuthError] = useState<string | null>(null);
@@ -48,7 +55,7 @@ export default function SignUp() {
   async function runLink() {
     setPhase('verifying');
     setLinkError(null);
-    const result = await linkApexId(gamerId.trim());
+    const result = await linkApexId(gamerId.trim(), platform);
     if (result.ok) {
       setStats(result.stats);
       setPhase('verified');
@@ -153,6 +160,14 @@ export default function SignUp() {
               />
 
               <View style={{ gap: 8 }}>
+                <Text style={styles.platformLabel}>Platform</Text>
+                <SegmentedControl height={40} options={PLATFORM_OPTIONS} value={platform} onChange={setPlatform} />
+                <Text style={styles.helpText}>
+                  Whichever platform your account is actually on — cross-play doesn't change which one holds your stats.
+                </Text>
+              </View>
+
+              <View style={{ gap: 8 }}>
                 <TextInput
                   value={gamerId}
                   onChangeText={setGamerId}
@@ -203,7 +218,10 @@ export default function SignUp() {
             <Text style={styles.headingLarge}>Account linked</Text>
             <Text style={styles.bodyCopy}>Everything below was read from your account, not entered by hand.</Text>
             <HudPanel variant="verified" contentStyle={{ padding: 20, gap: 16 }}>
-              <Text style={styles.gamerIdHeading}>{gamerIdShown}</Text>
+              <View style={{ gap: 3 }}>
+                <Text style={styles.gamerIdHeading}>{gamerIdShown}</Text>
+                <Text style={styles.platformLine}>{PLATFORM_OPTIONS.find((p) => p.value === stats.platform)?.label ?? stats.platform}</Text>
+              </View>
               <StatGrid
                 stats={[
                   { value: stats.kd != null ? stats.kd.toFixed(2) : '—', label: 'K/D' },
@@ -353,6 +371,14 @@ const styles = StyleSheet.create({
   },
   linkCopy: { fontFamily: fontFamily.interRegular, fontSize: 13, lineHeight: 19.5, color: color.textMuted },
   helpText: { fontFamily: fontFamily.interRegular, fontSize: 12, lineHeight: 17, color: color.textMuted },
+  platformLabel: {
+    fontFamily: fontFamily.interSemiBold,
+    fontSize: 10,
+    letterSpacing: 0.14 * 10,
+    textTransform: 'uppercase',
+    color: color.textMuted,
+  },
+  platformLine: { fontFamily: fontFamily.interMedium, fontSize: 12, color: color.textMuted },
   verifiedFooterRow: {
     flexDirection: 'row',
     alignItems: 'center',
