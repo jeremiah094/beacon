@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { Diamond } from '../../components/Diamond';
 import { color, fontFamily } from '../../theme/tokens';
+import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/hooks/useSession';
 import { usePushRegistration } from '../../lib/hooks/usePushRegistration';
 
@@ -27,6 +28,11 @@ export default function NotificationSettings() {
   async function handleEnable() {
     const r = await Notifications.requestPermissionsAsync();
     setStatus(r.status);
+  }
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.replace('/(auth)/sign-up');
   }
 
   const granted = status === 'granted';
@@ -81,6 +87,14 @@ export default function NotificationSettings() {
             You can mute a single game from its card on Upcoming Games without turning notifications off entirely.
           </Text>
         </View>
+
+        <Pressable onPress={handleSignOut}>
+          {({ hovered }: any) => (
+            <View style={[styles.signOutRow, hovered && { borderColor: color.hairlineStrong }]}>
+              <Text style={styles.signOutLabel}>Sign out</Text>
+            </View>
+          )}
+        </Pressable>
       </ScrollView>
     </SafeAreaView>
   );
@@ -126,4 +140,6 @@ const styles = StyleSheet.create({
   noteBox: { gap: 12, borderTopWidth: 1, borderTopColor: color.hairline, paddingTop: 16, marginTop: 4 },
   noteTitle: { fontFamily: fontFamily.interSemiBold, fontSize: 11, letterSpacing: 0.12 * 11, color: color.textPrimary, textTransform: 'uppercase' },
   noteBody: { fontFamily: fontFamily.interRegular, fontSize: 13, lineHeight: 19, color: color.textMuted },
+  signOutRow: { height: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: color.hairline, marginTop: 4 },
+  signOutLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 13, color: color.textMuted },
 });

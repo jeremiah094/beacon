@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { Diamond } from '../Diamond';
 import { color, fontFamily } from '../../theme/tokens';
+import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/hooks/useSession';
 import { useAdminNavCounts, useAdminProfile } from '../../lib/api/admin';
 
@@ -107,10 +108,13 @@ export function AdminShell({
           <View style={styles.avatarBox}>
             <Text style={styles.avatarLabel}>{profile?.initials ?? '··'}</Text>
           </View>
-          <View style={{ gap: 3, minWidth: 0 }}>
+          <View style={{ gap: 3, minWidth: 0, flex: 1 }}>
             <Text style={styles.footerName}>{profile?.name ?? 'Admin'}</Text>
             <Text style={styles.footerRole}>League organiser</Text>
           </View>
+          <Pressable onPress={() => supabase.auth.signOut().then(() => router.replace('/(auth)/sign-up'))}>
+            {({ hovered }: any) => <Text style={[styles.signOutLabel, hovered && { color: color.textPrimary }]}>Sign out</Text>}
+          </Pressable>
         </View>
       </View>
 
@@ -191,6 +195,7 @@ const styles = StyleSheet.create({
   avatarLabel: { fontFamily: fontFamily.rajdhaniBold, fontSize: 11, color: color.textMuted },
   footerName: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.textPrimary },
   footerRole: { fontFamily: fontFamily.interRegular, fontSize: 10, color: color.textMuted },
+  signOutLabel: { fontFamily: fontFamily.interMedium, fontSize: 11, color: color.textMuted },
   main: { flex: 1, minWidth: 0 },
   topBar: {
     padding: 20,

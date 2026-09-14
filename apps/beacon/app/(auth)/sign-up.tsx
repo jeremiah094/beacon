@@ -43,6 +43,10 @@ export default function SignUp() {
   const isEa = idType === 'ea';
   const gamerIdShown = gamerId.trim() || 'your account';
 
+  // Linking a gaming ID is optional everywhere — filling it in still runs
+  // the real verification; leaving it blank just skips straight through
+  // (and is always reachable again later via sign-in, which re-checks
+  // apex_verified_at and drops an unlinked account back on this step).
   const linkReady = gamerId.trim().length >= 3;
 
   const missing: string[] = [];
@@ -50,7 +54,6 @@ export default function SignUp() {
     if (!/^\S+@\S+\.\S+$/.test(email)) missing.push('a valid email address');
     if (password.length < 8) missing.push('a password of 8 characters or more');
   }
-  if ((phase === 'linking' || !isSignIn) && !linkReady) missing.push(isEa ? 'your EA Play ID' : 'your Apex Legends ID');
   const ready = missing.length === 0;
 
   let blockedReason = '';
@@ -72,6 +75,22 @@ export default function SignUp() {
     }
   }
 
+  async function submitAccount(attemptLink: boolean) {
+    setAuthError(null);
+    const emailRedirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+    const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo } });
+    if (error) {
+      setAuthError(error.message);
+      return;
+    }
+    if (data.session) {
+      if (attemptLink) await runLink();
+      else router.replace('/(player)/stats');
+    } else {
+      setPhase('confirmEmail');
+    }
+  }
+
   async function handlePrimary() {
     if (phase === 'form' && isSignIn) {
       if (!ready) return;
@@ -88,29 +107,18 @@ export default function SignUp() {
       if (profile?.apex_verified_at) {
         router.replace('/(player)/stats');
       } else {
-        // Confirmed and signed in, but never finished linking a gaming ID
-        // (exactly what happens if email confirmation got interrupted) —
-        // send them to finish that step rather than a dead end.
+        // Confirmed and signed in, but never finished (or skipped) linking
+        // a gaming ID — offer it again, still skippable from here too.
         setPhase('linking');
       }
     } else if (phase === 'form') {
       if (!ready) return;
-      setAuthError(null);
-      const emailRedirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
-      const { data, error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo } });
-      if (error) {
-        setAuthError(error.message);
-        return;
-      }
-      if (data.session) {
-        await runLink();
-      } else {
-        setPhase('confirmEmail');
-      }
+      await submitAccount(linkReady);
     } else if (phase === 'confirmEmail') {
       const { data } = await supabase.auth.getSession();
       if (data.session) {
-        await runLink();
+        if (linkReady) await runLink();
+        else router.replace('/(player)/stats');
       } else {
         setAuthError('Still waiting on that confirmation — check your inbox, then try again.');
       }
@@ -122,6 +130,17 @@ export default function SignUp() {
     }
   }
 
+  async function skipLinking() {
+    if (phase === 'linking') {
+      router.replace('/(player)/stats');
+      return;
+    }
+    // phase === 'form': create the account (if not already) without
+    // attempting to link — same path as leaving the gaming-ID field blank.
+    if (!ready) return;
+    await submitAccount(false);
+  }
+
   function startOver() {
     setPhase('form');
     setLinkError(null);
@@ -129,7 +148,7 @@ export default function SignUp() {
     setStats(null);
   }
 
-  const primary = primaryFor(phase, ready, isSignIn);
+  const primary = primaryFor(phase, ready, isSignIn, linkReady);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -276,6 +295,13 @@ export default function SignUp() {
           )}
         </Pressable>
 
+        {((phase === 'form' && !isSignIn) || phase === 'linking') && (
+          <Pressable onPress={skipLinking}>
+            <Text style={styles.skipLabel}>
+              {phase === 'linking' ? 'Skip for now' : 'Skip linking for now'} — you can link later by signing back in
+            </Text>
+          </Pressable>
+        )}
         {phase === 'form' && !isSignIn && (
           <Text style={styles.finePrint}>
             Continuing links your EA account data to Beacon for stat verification. We read match and rank
@@ -292,7 +318,7 @@ export default function SignUp() {
   );
 }
 
-function primaryFor(phase: Phase, ready: boolean, isSignIn: boolean) {
+function primaryFor(phase: Phase, ready: boolean, isSignIn: boolean, linkReady: boolean) {
   if (phase === 'verifying') {
     return {
       label: 'Verifying…',
@@ -325,7 +351,7 @@ function primaryFor(phase: Phase, ready: boolean, isSignIn: boolean) {
     };
   }
   if (phase === 'linking') {
-    return ready
+    return linkReady
       ? {
           label: 'Link account',
           bg: color.textPrimary,
@@ -385,13 +411,14 @@ function GamingIdPanel({
       <View style={styles.linkHeaderRow}>
         <Text style={[styles.eyebrow, { color: color.textPrimary }]}>Link your gaming ID</Text>
         <View style={styles.requiredChip}>
-          <Text style={styles.requiredChipLabel}>REQUIRED</Text>
+          <Text style={styles.requiredChipLabel}>RECOMMENDED</Text>
         </View>
       </View>
 
       <Text style={styles.linkCopy}>
         Beacon reads your rank, K/D and wins straight from your account, so every stat in the league is
-        verified rather than self-reported. It also confirms you're eligible to play.
+        verified rather than self-reported. It also confirms you're eligible to play — you can skip this
+        for now and link it later.
       </Text>
 
       <SegmentedControl
@@ -510,5 +537,6 @@ const styles = StyleSheet.create({
   primaryContent: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   primaryLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 15 },
   finePrint: { fontFamily: fontFamily.interRegular, fontSize: 11, lineHeight: 16.5, color: color.textMuted, textAlign: 'center' },
+  skipLabel: { fontFamily: fontFamily.interMedium, fontSize: 12, color: color.textMuted, textAlign: 'center' },
   startOver: { fontFamily: fontFamily.interMedium, fontSize: 12, color: color.textMuted, textAlign: 'center' },
 });
