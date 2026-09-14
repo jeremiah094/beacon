@@ -7,15 +7,21 @@ import { supabase } from '../lib/supabase';
 
 export default function Index() {
   const [checked, setChecked] = useState(false);
-  const [hasSession, setHasSession] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setHasSession(!!data.session);
+    supabase.auth.getSession().then(async ({ data }) => {
+      const id = data.session?.user.id ?? null;
+      setUserId(id);
+      if (id) {
+        const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', id).maybeSingle();
+        setIsAdmin(!!profile?.is_admin);
+      }
       setChecked(true);
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setHasSession(!!session);
+      setUserId(session?.user.id ?? null);
     });
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -28,5 +34,6 @@ export default function Index() {
     );
   }
 
-  return <Redirect href={hasSession ? '/(player)/stats' : '/(auth)/sign-up'} />;
+  if (!userId) return <Redirect href="/(auth)/sign-up" />;
+  return <Redirect href={isAdmin ? '/(admin)/leagues' : '/(player)/stats'} />;
 }

@@ -96,9 +96,11 @@ export default function SignUp() {
       }
       const userId = data.user?.id;
       const { data: profile } = userId
-        ? await supabase.from('profiles').select('apex_verified_at').eq('id', userId).maybeSingle()
+        ? await supabase.from('profiles').select('apex_verified_at, is_admin').eq('id', userId).maybeSingle()
         : { data: null };
-      if (profile?.apex_verified_at) {
+      if (profile?.is_admin) {
+        router.replace('/(admin)/leagues');
+      } else if (profile?.apex_verified_at) {
         router.replace('/(player)/stats');
       } else {
         // Confirmed and signed in, but never finished (or skipped) linking

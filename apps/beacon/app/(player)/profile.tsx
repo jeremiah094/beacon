@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -33,6 +33,14 @@ export default function Profile() {
   const [gamerId, setGamerId] = useState('');
   const [linking, setLinking] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!userId) return;
+    supabase.from('profiles').select('is_admin').eq('id', userId).maybeSingle().then(({ data }) => {
+      setIsAdmin(!!data?.is_admin);
+    });
+  }, [userId]);
 
   const isEa = idType === 'ea';
   const linkReady = gamerId.trim().length >= 3;
@@ -174,6 +182,16 @@ export default function Profile() {
               </View>
             )}
           </Pressable>
+          {isAdmin && (
+            <Pressable onPress={() => router.push('/(admin)/leagues')}>
+              {({ hovered }: any) => (
+                <View style={[styles.settingsRow, hovered && { borderColor: color.hairlineStrong }]}>
+                  <Text style={styles.settingsLabel}>Admin console</Text>
+                  <Text style={styles.chevron}>→</Text>
+                </View>
+              )}
+            </Pressable>
+          )}
         </View>
 
         <Pressable onPress={handleSignOut}>
