@@ -5,11 +5,13 @@ type Props<T extends string> = {
   options: { value: T; label: string }[];
   value: T;
   onChange: (value: T) => void;
+  /** Track height — 42 in the design system reference, 44 on screen 01. */
+  height?: number;
   style?: object;
 };
 
 /** Design system §4. */
-export function SegmentedControl<T extends string>({ options, value, onChange, style }: Props<T>) {
+export function SegmentedControl<T extends string>({ options, value, onChange, height = 42, style }: Props<T>) {
   return (
     <View style={[styles.track, style]}>
       {options.map((opt) => {
@@ -17,7 +19,7 @@ export function SegmentedControl<T extends string>({ options, value, onChange, s
         return (
           <Pressable key={opt.value} style={styles.segment} onPress={() => onChange(opt.value)}>
             {({ hovered }: any) => (
-              <View style={[styles.segmentInner, active && styles.segmentActive]}>
+              <View style={[styles.segmentInner, { height }, active && styles.segmentActive]}>
                 <Text
                   style={[
                     styles.label,
@@ -43,7 +45,7 @@ const styles = StyleSheet.create({
     backgroundColor: color.base,
   },
   segment: { flex: 1 },
-  segmentInner: { height: 42, alignItems: 'center', justifyContent: 'center' },
+  segmentInner: { alignItems: 'center', justifyContent: 'center' },
   segmentActive: { backgroundColor: color.textPrimary },
   label: { fontFamily: fontFamily.interMedium, fontSize: 13, color: color.textMuted },
   labelActive: { fontFamily: fontFamily.interSemiBold, color: color.base },

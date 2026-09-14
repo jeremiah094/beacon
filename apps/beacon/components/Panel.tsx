@@ -15,10 +15,17 @@ export function Panel({ style, children, ...rest }: PanelProps) {
 
 type HudPanelProps = Omit<ViewProps, 'style'> & {
   /** 'default' = hairline border. 'ember' = the border a live countdown/lock
-   * warning takes on (design system §7, "locking" state). */
-  variant?: 'default' | 'ember';
+   * warning takes on (design system §7, "locking" state). 'verified' = the
+   * green border an account-linked/success panel takes on (screen 01). */
+  variant?: 'default' | 'ember' | 'verified';
   contentStyle?: StyleProp<ViewStyle>;
   style?: StyleProp<ViewStyle>;
+};
+
+const strokeForVariant: Record<NonNullable<HudPanelProps['variant']>, string> = {
+  default: color.hairline,
+  ember: color.emberBorderSoft,
+  verified: color.verifiedTintBorder,
 };
 
 /** Corner-cut "HUD panel" — stat and match-day cards (design system §6). */
@@ -26,7 +33,7 @@ export function HudPanel({ variant = 'default', style, contentStyle, children, .
   return (
     <CornerCut
       style={[styles.hudOuter, style]}
-      strokeColor={variant === 'ember' ? color.emberBorderSoft : color.hairline}
+      strokeColor={strokeForVariant[variant]}
       fill={color.panel}
       {...rest}
     >
