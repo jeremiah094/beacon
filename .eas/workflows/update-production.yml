@@ -1,0 +1,16 @@
+name: Publish production update
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: "Update message"
+        required: false
+
+jobs:
+  publish_update:
+    name: Publish update
+    type: update
+    params:
+      channel: production
+      message: ${{ inputs.message || 'Manual update' }}
