@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
@@ -7,6 +7,8 @@ import { Diamond } from '../../components/Diamond';
 import { color, fontFamily } from '../../theme/tokens';
 import { useSession } from '../../lib/hooks/useSession';
 import { usePushRegistration } from '../../lib/hooks/usePushRegistration';
+
+const isWeb = Platform.OS === 'web';
 
 // Reference: Beacon 10 Push Notifications.dc.html. The source shows OS
 // lock-screen and banner mockups — that's not a real in-app screen (no app
@@ -21,6 +23,11 @@ export default function NotificationSettings() {
   usePushRegistration(userId);
 
   useEffect(() => {
+    // usePushRegistration already no-ops on web (no VAPID/service-worker
+    // setup yet — see that hook). Skip the permission check here too, so
+    // this screen doesn't prompt for a browser permission that nothing
+    // is actually listening on.
+    if (isWeb) return;
     Notifications.getPermissionsAsync().then((r) => setStatus(r.status));
   }, []);
 
@@ -44,18 +51,27 @@ export default function NotificationSettings() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.statusBox}>
-          <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: granted ? color.verified : color.textMuted }]} />
-            <Text style={styles.statusText}>{granted ? 'Push notifications are on' : 'Push notifications are off'}</Text>
-          </View>
-          {!granted && (
-            <Pressable onPress={handleEnable}>
-              {({ pressed, hovered }: any) => (
-                <View style={[styles.enableButton, { backgroundColor: pressed ? color.fillActive : hovered ? color.fillHover : color.textPrimary }]}>
-                  <Text style={styles.enableLabel}>Enable notifications</Text>
-                </View>
+          {isWeb ? (
+            <View style={styles.statusRow}>
+              <View style={[styles.statusDot, { backgroundColor: color.textMuted }]} />
+              <Text style={styles.statusText}>Push notifications need the Beacon mobile app — not yet supported in the browser</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.statusRow}>
+                <View style={[styles.statusDot, { backgroundColor: granted ? color.verified : color.textMuted }]} />
+                <Text style={styles.statusText}>{granted ? 'Push notifications are on' : 'Push notifications are off'}</Text>
+              </View>
+              {!granted && (
+                <Pressable onPress={handleEnable}>
+                  {({ pressed, hovered }: any) => (
+                    <View style={[styles.enableButton, { backgroundColor: pressed ? color.fillActive : hovered ? color.fillHover : color.textPrimary }]}>
+                      <Text style={styles.enableLabel}>Enable notifications</Text>
+                    </View>
+                  )}
+                </Pressable>
               )}
-            </Pressable>
+            </>
           )}
         </View>
 
@@ -112,9 +128,9 @@ const styles = StyleSheet.create({
   title: { fontFamily: fontFamily.rajdhaniBold, fontSize: 28, letterSpacing: 0.01 * 28, color: color.textPrimary },
   content: { padding: 22, paddingTop: 18, gap: 14 },
   statusBox: { borderWidth: 1, borderColor: color.hairline, backgroundColor: color.panel, padding: 16, gap: 12 },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { fontFamily: fontFamily.interSemiBold, fontSize: 14, color: color.textPrimary },
+  statusRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
+  statusDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },
+  statusText: { flex: 1, fontFamily: fontFamily.interSemiBold, fontSize: 14, lineHeight: 19, color: color.textPrimary },
   enableButton: { height: 44, alignItems: 'center', justifyContent: 'center' },
   enableLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 14, color: color.base },
   exampleCard: { flexDirection: 'row', gap: 12, borderWidth: 1, backgroundColor: color.panel, padding: 15, paddingHorizontal: 16 },
