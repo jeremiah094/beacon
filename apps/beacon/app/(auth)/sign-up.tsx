@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Diamond } from '../../components/Diamond';
+import { Logo } from '../../components/Logo';
 import { HudPanel } from '../../components/Panel';
 import { SegmentedControl } from '../../components/SegmentedControl';
 import { StatGrid } from '../../components/StatGrid';
@@ -151,7 +152,7 @@ export default function SignUp() {
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.wordmarkBlock}>
           <View style={styles.wordmarkRow}>
-            <Diamond size={14} color={color.ember} />
+            <Logo size={28} />
             <Text style={styles.wordmark}>BEACON</Text>
           </View>
           <Text style={styles.tagline}>Ireland's Apex Legends league</Text>

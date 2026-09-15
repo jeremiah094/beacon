@@ -1,7 +1,8 @@
 import { ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Diamond } from '../Diamond';
+import { Ionicons } from '@expo/vector-icons';
+import { Logo } from '../Logo';
 import { color, fontFamily } from '../../theme/tokens';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/hooks/useSession';
@@ -28,12 +29,12 @@ type Props = {
   children: ReactNode;
 };
 
-const NAV_ITEMS: { key: AdminNavKey; label: string }[] = [
-  { key: 'leagues', label: 'Leagues' },
-  { key: 'approvals', label: 'Team approvals' },
-  { key: 'schedule', label: 'Schedule' },
-  { key: 'live', label: 'Live matches' },
-  { key: 'results', label: 'Results' },
+const NAV_ITEMS: { key: AdminNavKey; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { key: 'leagues', label: 'Leagues', icon: 'trophy-outline' },
+  { key: 'approvals', label: 'Team approvals', icon: 'checkmark-circle-outline' },
+  { key: 'schedule', label: 'Schedule', icon: 'calendar-outline' },
+  { key: 'live', label: 'Live matches', icon: 'radio-outline' },
+  { key: 'results', label: 'Results', icon: 'flag-outline' },
 ];
 
 export function AdminShell({
@@ -73,7 +74,7 @@ export function AdminShell({
       <View style={styles.sidebar}>
         <View style={styles.sidebarHeader}>
           <View style={styles.wordmarkRow}>
-            <Diamond size={12} color={color.ember} />
+            <Logo size={24} />
             <Text style={styles.wordmark}>BEACON</Text>
           </View>
           <Text style={styles.consoleLabel}>ADMIN CONSOLE</Text>
@@ -92,7 +93,10 @@ export function AdminShell({
                       { borderLeftColor: isActive ? color.textPrimary : 'transparent' },
                     ]}
                   >
-                    <Text style={[styles.navLabel, { color: isActive ? color.textPrimary : color.textMuted }]}>{item.label}</Text>
+                    <View style={styles.navLabelRow}>
+                      <Ionicons name={item.icon} size={15} color={isActive ? color.textPrimary : color.textMuted} />
+                      <Text style={[styles.navLabel, { color: isActive ? color.textPrimary : color.textMuted }]}>{item.label}</Text>
+                    </View>
                     <Text style={styles.navCount}>{countFor(item.key)}</Text>
                   </View>
                 )}
@@ -100,7 +104,10 @@ export function AdminShell({
             );
           })}
           <View style={[styles.navRow, { opacity: 0.4 }]}>
-            <Text style={[styles.navLabel, { color: color.textMuted }]}>Settings</Text>
+            <View style={styles.navLabelRow}>
+              <Ionicons name="settings-outline" size={15} color={color.textMuted} />
+              <Text style={[styles.navLabel, { color: color.textMuted }]}>Settings</Text>
+            </View>
           </View>
         </View>
 
@@ -113,7 +120,12 @@ export function AdminShell({
             <Text style={styles.footerRole}>League organiser</Text>
           </View>
           <Pressable onPress={() => supabase.auth.signOut().then(() => router.replace('/(auth)/sign-up'))}>
-            {({ hovered }: any) => <Text style={[styles.signOutLabel, hovered && { color: color.textPrimary }]}>Sign out</Text>}
+            {({ hovered }: any) => (
+              <View style={styles.signOutRow}>
+                <Ionicons name="log-out-outline" size={14} color={hovered ? color.textPrimary : color.textMuted} />
+                <Text style={[styles.signOutLabel, hovered && { color: color.textPrimary }]}>Sign out</Text>
+              </View>
+            )}
           </Pressable>
         </View>
       </View>
@@ -179,6 +191,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderLeftWidth: 2,
   },
+  navLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   navLabel: { fontFamily: fontFamily.interMedium, fontSize: 13 },
   navCount: { fontFamily: fontFamily.interMedium, fontSize: 11, color: color.textMuted },
   sidebarFooter: {
@@ -195,6 +208,7 @@ const styles = StyleSheet.create({
   avatarLabel: { fontFamily: fontFamily.rajdhaniBold, fontSize: 11, color: color.textMuted },
   footerName: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.textPrimary },
   footerRole: { fontFamily: fontFamily.interRegular, fontSize: 10, color: color.textMuted },
+  signOutRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   signOutLabel: { fontFamily: fontFamily.interMedium, fontSize: 11, color: color.textMuted },
   main: { flex: 1, minWidth: 0 },
   topBar: {

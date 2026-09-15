@@ -3,6 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import { BottomNav } from '../../components/BottomNav';
 import { CornerCut } from '../../components/CornerCut';
 import { Diamond } from '../../components/Diamond';
@@ -177,7 +178,10 @@ export default function Profile() {
           <Pressable onPress={() => router.push('/(player)/notifications')}>
             {({ hovered }: any) => (
               <View style={[styles.settingsRow, hovered && { borderColor: color.hairlineStrong }]}>
-                <Text style={styles.settingsLabel}>Notifications</Text>
+                <View style={styles.settingsLabelRow}>
+                  <Ionicons name="notifications-outline" size={16} color={color.textPrimary} />
+                  <Text style={styles.settingsLabel}>Notifications</Text>
+                </View>
                 <Text style={styles.chevron}>→</Text>
               </View>
             )}
@@ -186,7 +190,10 @@ export default function Profile() {
             <Pressable onPress={() => router.push('/(admin)/leagues')}>
               {({ hovered }: any) => (
                 <View style={[styles.settingsRow, hovered && { borderColor: color.hairlineStrong }]}>
-                  <Text style={styles.settingsLabel}>Admin console</Text>
+                  <View style={styles.settingsLabelRow}>
+                    <Ionicons name="shield-checkmark-outline" size={16} color={color.textPrimary} />
+                    <Text style={styles.settingsLabel}>Admin console</Text>
+                  </View>
                   <Text style={styles.chevron}>→</Text>
                 </View>
               )}
@@ -197,6 +204,7 @@ export default function Profile() {
         <Pressable onPress={handleSignOut}>
           {({ hovered }: any) => (
             <View style={[styles.signOutRow, hovered && { borderColor: color.hairlineStrong }]}>
+              <Ionicons name="log-out-outline" size={16} color={color.textMuted} />
               <Text style={styles.signOutLabel}>Sign out</Text>
             </View>
           )}
@@ -253,8 +261,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  settingsLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   settingsLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 14, color: color.textPrimary },
   chevron: { fontFamily: fontFamily.interRegular, fontSize: 16, color: color.textMuted },
-  signOutRow: { height: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: color.hairline },
+  signOutRow: { flexDirection: 'row', gap: 8, height: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: color.hairline },
   signOutLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 13, color: color.textMuted },
 });

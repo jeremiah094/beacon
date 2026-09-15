@@ -1,15 +1,22 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, usePathname } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { color, fontFamily } from '../theme/tokens';
 
 type TabKey = 'stats' | 'leagues' | 'teams' | 'games' | 'profile';
 
-const TABS: { key: TabKey; label: string; href: string }[] = [
-  { key: 'stats', label: 'Home', href: '/(player)/stats' },
-  { key: 'leagues', label: 'Leagues', href: '/(player)/leagues' },
-  { key: 'teams', label: 'Teams', href: '/(player)/teams' },
-  { key: 'games', label: 'Games', href: '/(player)/games' },
-  { key: 'profile', label: 'Profile', href: '/(player)/profile' },
+const TABS: {
+  key: TabKey;
+  label: string;
+  href: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  iconActive: keyof typeof Ionicons.glyphMap;
+}[] = [
+  { key: 'stats', label: 'Home', href: '/(player)/stats', icon: 'home-outline', iconActive: 'home' },
+  { key: 'leagues', label: 'Leagues', href: '/(player)/leagues', icon: 'trophy-outline', iconActive: 'trophy' },
+  { key: 'teams', label: 'Teams', href: '/(player)/teams', icon: 'people-outline', iconActive: 'people' },
+  { key: 'games', label: 'Games', href: '/(player)/games', icon: 'game-controller-outline', iconActive: 'game-controller' },
+  { key: 'profile', label: 'Profile', href: '/(player)/profile', icon: 'person-outline', iconActive: 'person' },
 ];
 
 /** Not one of BUILD.md's 16 reference screens — the source mockups are
@@ -36,11 +43,10 @@ export function BottomNav({ active }: { active: TabKey }) {
           >
             {({ hovered }: any) => (
               <View style={styles.tabInner}>
-                <View
-                  style={[
-                    styles.dot,
-                    { borderColor: isActive ? color.textPrimary : color.textMuted, backgroundColor: isActive ? color.textPrimary : 'transparent' },
-                  ]}
+                <Ionicons
+                  name={isActive ? tab.iconActive : tab.icon}
+                  size={20}
+                  color={isActive ? color.textPrimary : hovered ? color.textPrimary : color.textMuted}
                 />
                 <Text style={[styles.label, { color: isActive ? color.textPrimary : color.textMuted }, hovered && !isActive && { color: color.textPrimary }]}>
                   {tab.label.toUpperCase()}
@@ -62,7 +68,6 @@ const styles = StyleSheet.create({
     backgroundColor: color.panel,
   },
   tab: { flex: 1 },
-  tabInner: { paddingVertical: 12, alignItems: 'center', justifyContent: 'center', gap: 6 },
-  dot: { width: 6, height: 6, borderWidth: 1, transform: [{ rotate: '45deg' }] },
+  tabInner: { paddingVertical: 12, alignItems: 'center', justifyContent: 'center', gap: 5 },
   label: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.1 * 10 },
 });
