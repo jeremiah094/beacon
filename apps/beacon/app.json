@@ -11,7 +11,7 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ie.beacon.app"
+      "bundleIdentifier": "com.beaconproject.app"
     },
     "android": {
       "package": "ie.beacon.app",
