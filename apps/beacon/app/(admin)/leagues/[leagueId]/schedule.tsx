@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { AdminShell } from '../../../../components/admin/AdminShell';
 import { AdminButton } from '../../../../components/admin/AdminButton';
 import { AdminChip } from '../../../../components/admin/AdminChip';
+import { AdminDateField } from '../../../../components/admin/AdminDateField';
 import { AdminTallyRow } from '../../../../components/admin/AdminTally';
 import { CornerCut } from '../../../../components/CornerCut';
 import { Diamond } from '../../../../components/Diamond';
@@ -65,7 +66,6 @@ export default function ScheduleMatches() {
   if (!round.trim()) missing.push('a round number');
   if (!gameNumber.trim()) missing.push('a game number');
   if (!date.trim()) missing.push('a date');
-  if ((approvedTeams ?? 0) < 2) missing.push('at least 2 approved teams');
   const ready = missing.length === 0;
   let blockedReason = '';
   if (missing.length === 1) blockedReason = `Publishing needs ${missing[0]}.`;
@@ -166,7 +166,9 @@ export default function ScheduleMatches() {
                 </View>
               </View>
               <Text style={styles.notifyLine}>
-                Publishing notifies {players} players across {approvedTeams ?? 0} teams immediately. There is no quiet publish — if the time is wrong, fix it before you publish rather than after.
+                {(approvedTeams ?? 0) > 0
+                  ? `Publishing notifies ${players} players across ${approvedTeams} teams immediately. There is no quiet publish — if the time is wrong, fix it before you publish rather than after.`
+                  : 'No teams are approved yet, so this publishes with an empty lobby. Every team you approve afterward on Team approvals plays it — there’s no separate step to add them to this game.'}
               </Text>
             </View>
           )}
@@ -208,7 +210,7 @@ export default function ScheduleMatches() {
           <TextInput value={gameNumber} onChangeText={(v) => { setGameNumber(v); setJustPublishedId(null); }} placeholder="1" placeholderTextColor={color.fillPlaceholder} keyboardType="number-pad" style={[styles.input, tabularNums]} />
         </Field>
         <Field label="Date" style={{ flex: 1 }}>
-          <TextInput value={date} onChangeText={(v) => { setDate(v); setJustPublishedId(null); }} placeholder="2026-09-08" placeholderTextColor={color.fillPlaceholder} style={[styles.input, tabularNums]} />
+          <AdminDateField value={date} onChange={(v) => { setDate(v); setJustPublishedId(null); }} style={tabularNums} />
         </Field>
         <Field label="Lobby opens" style={{ flex: 1.2 }}>
           <View style={{ flexDirection: 'row', gap: 8 }}>

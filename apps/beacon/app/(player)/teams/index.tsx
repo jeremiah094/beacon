@@ -21,17 +21,23 @@ export default function MyTeams() {
   const [showCreate, setShowCreate] = useState(!!joinLeagueId);
   const [name, setName] = useState('');
   const [tag, setTag] = useState('');
+  const [createError, setCreateError] = useState<string | null>(null);
   const createTeam = useCreateTeam(userId);
 
   const atLimit = list.length >= 3;
 
   async function handleCreate() {
     if (!name.trim()) return;
-    const newId = await createTeam.mutateAsync({ name: name.trim(), tag: tag.trim(), joinLeagueId });
-    setActiveTeam(newId);
-    setName('');
-    setTag('');
-    setShowCreate(false);
+    setCreateError(null);
+    try {
+      const newId = await createTeam.mutateAsync({ name: name.trim(), tag: tag.trim(), joinLeagueId });
+      setActiveTeam(newId);
+      setName('');
+      setTag('');
+      setShowCreate(false);
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Could not create the team. Try again.');
+    }
   }
 
   return (
@@ -101,6 +107,12 @@ export default function MyTeams() {
               maxLength={4}
               style={styles.createInput}
             />
+            {createError && (
+              <View style={styles.noteRow}>
+                <View style={styles.noteBar} />
+                <Text style={[styles.noteText, { color: color.textPrimary }]}>{createError}</Text>
+              </View>
+            )}
             <Pressable onPress={handleCreate} disabled={!name.trim() || createTeam.isPending}>
               {({ pressed, hovered }: any) => (
                 <View

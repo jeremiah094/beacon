@@ -4,6 +4,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { AdminShell } from '../../../components/admin/AdminShell';
 import { AdminButton } from '../../../components/admin/AdminButton';
 import { AdminChip } from '../../../components/admin/AdminChip';
+import { AdminDateField } from '../../../components/admin/AdminDateField';
 import { CornerCut } from '../../../components/CornerCut';
 import { Spinner } from '../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../theme/tokens';
@@ -201,11 +202,11 @@ export default function CreateOrEditLeague() {
         <View style={styles.dateRow}>
           <View style={{ flex: 1, gap: 7 }}>
             <Text style={styles.dateLabel}>STARTS</Text>
-            <TextInput value={startDate} onChangeText={setStartDate} placeholder="2026-09-14" placeholderTextColor={color.fillPlaceholder} style={[styles.input, { height: 46 }]} />
+            <AdminDateField value={startDate} onChange={setStartDate} />
           </View>
           <View style={{ flex: 1, gap: 7 }}>
             <Text style={styles.dateLabel}>ENDS</Text>
-            <TextInput value={endDate} onChangeText={setEndDate} placeholder="2026-12-21" placeholderTextColor={color.fillPlaceholder} style={[styles.input, { height: 46 }]} />
+            <AdminDateField value={endDate} onChange={setEndDate} />
           </View>
           <View style={{ flex: 1, gap: 7 }}>
             <Text style={styles.dateLabel}>DURATION</Text>
