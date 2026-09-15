@@ -36,7 +36,11 @@ export default function MyTeams() {
       setTag('');
       setShowCreate(false);
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Could not create the team. Try again.');
+      // Supabase's PostgrestError is a plain { message, details, hint, code }
+      // object, not an Error instance — `instanceof Error` misses it and
+      // was masking every real RLS/DB error behind the generic fallback.
+      const message = (err as { message?: string } | null)?.message;
+      setCreateError(message || 'Could not create the team. Try again.');
     }
   }
 
