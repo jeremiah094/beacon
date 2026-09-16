@@ -11,6 +11,9 @@ jobs:
   publish_update:
     name: Publish update
     type: update
+    defaults:
+      run:
+        working_directory: ./apps/beacon
     params:
       channel: production
       message: ${{ inputs.message || 'Manual update' }}
