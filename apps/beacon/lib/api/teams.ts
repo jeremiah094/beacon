@@ -107,10 +107,8 @@ export function useCreateTeam(userId: string | undefined) {
         .single();
       if (teamError || !team) throw teamError ?? new Error('Failed to create team');
 
-      const { error: memberError } = await supabase
-        .from('team_members')
-        .insert({ team_id: team.id, profile_id: userId, role: 'captain' });
-      if (memberError) throw memberError;
+      // The on_team_created trigger adds the captain to team_members
+      // server-side, in the same transaction as the insert above.
 
       if (joinLeagueId) {
         const { error: regError } = await supabase
