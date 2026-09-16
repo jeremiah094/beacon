@@ -47,6 +47,7 @@ export default function RosterLineup() {
   const exact = n === 3;
   const rosterFull = data.roster.length >= 5;
   const isConfirmed = !!data.confirmedAt && exact;
+  const hasGame = !!data.gameId;
 
   function toggle(profileId: string) {
     setSelected((prev) => (prev.includes(profileId) ? prev.filter((id) => id !== profileId) : [...prev, profileId]));
@@ -124,11 +125,17 @@ export default function RosterLineup() {
       <ScrollView contentContainerStyle={styles.list}>
         <View style={styles.rosterHeaderRow}>
           <Text style={styles.sectionLabel}>Roster</Text>
-          <Text style={styles.hint}>Tap to add or drop</Text>
+          <Text style={styles.hint}>{hasGame ? 'Tap to add or drop' : 'No upcoming match'}</Text>
         </View>
 
         {data.roster.map((p) => (
-          <PlayerRow key={p.profileId} player={p} selected={selected.includes(p.profileId)} onToggle={() => toggle(p.profileId)} />
+          <PlayerRow
+            key={p.profileId}
+            player={p}
+            selectable={hasGame}
+            selected={hasGame && selected.includes(p.profileId)}
+            onToggle={() => toggle(p.profileId)}
+          />
         ))}
 
         {!rosterFull && (
@@ -162,53 +169,72 @@ export default function RosterLineup() {
       </ScrollView>
 
       <View style={styles.dockedFooter}>
-        {showError && !exact && (
-          <View style={styles.errorBox}>
-            <View style={styles.errorDot} />
-            <Text style={styles.errorText}>{errorText}</Text>
-          </View>
-        )}
-        {isConfirmed && !showError && (
-          <View style={styles.confirmedBox}>
-            <Diamond size={9} color={color.verified} />
-            <Text style={styles.confirmedText}>
-              Lineup submitted. You can change it until {data.lockAt ? formatClock(data.lockAt) : 'lock'}.
-            </Text>
-          </View>
-        )}
-
-        <Pressable onPress={handleConfirm} disabled={setLineup.isPending}>
-          {({ pressed, hovered }: any) => (
-            <CornerCut
-              cut={10}
-              fill={isConfirmed ? color.verifiedTint : pressed ? color.fillActive : hovered ? color.fillHover : color.textPrimary}
-              strokeColor={isConfirmed ? color.verifiedTintBorder : 'transparent'}
-              style={styles.confirmOuter}
-            >
-              <View style={styles.confirmContent}>
-                {setLineup.isPending ? (
-                  <Spinner size={14} strokeColor={color.base} />
-                ) : (
-                  <Text style={[styles.confirmLabel, { color: isConfirmed ? color.verified : color.base }]}>
-                    {isConfirmed ? 'Lineup confirmed' : 'Confirm lineup'}
-                  </Text>
-                )}
+        {hasGame ? (
+          <>
+            {showError && !exact && (
+              <View style={styles.errorBox}>
+                <View style={styles.errorDot} />
+                <Text style={styles.errorText}>{errorText}</Text>
               </View>
-            </CornerCut>
-          )}
-        </Pressable>
+            )}
+            {isConfirmed && !showError && (
+              <View style={styles.confirmedBox}>
+                <Diamond size={9} color={color.verified} />
+                <Text style={styles.confirmedText}>
+                  Lineup submitted. You can change it until {data.lockAt ? formatClock(data.lockAt) : 'lock'}.
+                </Text>
+              </View>
+            )}
 
-        <Text style={styles.footerNote}>
-          Lineup locks {data.lockAt ? formatClock(data.lockAt) : ''}, 10 minutes before the lobby opens.
-        </Text>
+            <Pressable onPress={handleConfirm} disabled={setLineup.isPending}>
+              {({ pressed, hovered }: any) => (
+                <CornerCut
+                  cut={10}
+                  fill={isConfirmed ? color.verifiedTint : pressed ? color.fillActive : hovered ? color.fillHover : color.textPrimary}
+                  strokeColor={isConfirmed ? color.verifiedTintBorder : 'transparent'}
+                  style={styles.confirmOuter}
+                >
+                  <View style={styles.confirmContent}>
+                    {setLineup.isPending ? (
+                      <Spinner size={14} strokeColor={color.base} />
+                    ) : (
+                      <Text style={[styles.confirmLabel, { color: isConfirmed ? color.verified : color.base }]}>
+                        {isConfirmed ? 'Lineup confirmed' : 'Confirm lineup'}
+                      </Text>
+                    )}
+                  </View>
+                </CornerCut>
+              )}
+            </Pressable>
+
+            <Text style={styles.footerNote}>
+              Lineup locks {data.lockAt ? formatClock(data.lockAt) : ''}, 10 minutes before the lobby opens.
+            </Text>
+          </>
+        ) : (
+          <View style={styles.noteRow}>
+            <View style={styles.noteBar} />
+            <Text style={styles.noteText}>No upcoming match yet. Once your league admin schedules one, you'll be able to pick your trio here.</Text>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
 }
 
-function PlayerRow({ player, selected, onToggle }: { player: RosterPlayer; selected: boolean; onToggle: () => void }) {
+function PlayerRow({
+  player,
+  selected,
+  selectable,
+  onToggle,
+}: {
+  player: RosterPlayer;
+  selected: boolean;
+  selectable: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <Pressable onPress={onToggle}>
+    <Pressable onPress={selectable ? onToggle : undefined}>
       {({ pressed }: any) => (
         <CornerCut
           cut={14}
@@ -231,9 +257,11 @@ function PlayerRow({ player, selected, onToggle }: { player: RosterPlayer; selec
               <View style={styles.roleChip}>
                 <Text style={styles.roleChipLabel}>{player.role.toUpperCase()}</Text>
               </View>
-              <View style={[styles.checkbox, { borderColor: selected ? color.verified : color.hairlineStrong, backgroundColor: selected ? color.verified : 'transparent' }]}>
-                {selected && <Diamond size={10} color={color.base} />}
-              </View>
+              {selectable && (
+                <View style={[styles.checkbox, { borderColor: selected ? color.verified : color.hairlineStrong, backgroundColor: selected ? color.verified : 'transparent' }]}>
+                  {selected && <Diamond size={10} color={color.base} />}
+                </View>
+              )}
             </View>
           </View>
         </CornerCut>
