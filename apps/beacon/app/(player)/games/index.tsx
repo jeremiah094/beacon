@@ -1,8 +1,11 @@
+import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import * as ClipboardAPI from 'expo-clipboard';
 import { BottomNav } from '../../../components/BottomNav';
 import { CornerCut } from '../../../components/CornerCut';
+import { Diamond } from '../../../components/Diamond';
 import { Spinner } from '../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../theme/tokens';
 import { useCountdownLabel } from '../../../lib/hooks/useCountdown';
@@ -120,6 +123,15 @@ export default function UpcomingGames() {
 
 function NextGameCard({ game, onToggleMute, teamId }: { game: UpcomingGame; onToggleMute: () => void; teamId: string }) {
   const countdown = useCountdownLabel(game.scheduledAt) ?? '0h 00m 00s';
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopyCode() {
+    if (!game.lobbyCode) return;
+    await ClipboardAPI.setStringAsync(game.lobbyCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 4000);
+  }
+
   return (
     <CornerCut cut={20} fill={color.panel} strokeColor={color.emberBorderSoft} style={{ width: '100%' }}>
       <View style={styles.nextCardContent}>
@@ -140,6 +152,35 @@ function NextGameCard({ game, onToggleMute, teamId }: { game: UpcomingGame; onTo
           <Text style={[styles.countdownValue, tabularNums]}>{countdown}</Text>
           <Text style={styles.countdownCaption}>until the lobby opens</Text>
         </View>
+
+        {game.lobbyCode ? (
+          <Pressable onPress={handleCopyCode}>
+            {({ pressed, hovered }: any) => (
+              <View
+                style={[
+                  styles.lobbyCodeBox,
+                  copied
+                    ? { backgroundColor: color.verifiedTint, borderColor: color.verifiedTintBorder }
+                    : { backgroundColor: pressed ? color.emberActive : hovered ? color.emberHover : color.ember, borderColor: color.ember },
+                ]}
+              >
+                <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+                  <Text style={[styles.lobbyCodeLabel, { color: copied ? color.verified : color.base }]}>
+                    {copied ? 'COPIED' : 'LOBBY CODE · TAP TO COPY'}
+                  </Text>
+                  <Text style={[styles.lobbyCodeValue, { color: copied ? color.verified : color.base }]} numberOfLines={1}>
+                    {game.lobbyCode}
+                  </Text>
+                </View>
+                {copied && <Diamond size={13} color={color.verified} />}
+              </View>
+            )}
+          </Pressable>
+        ) : (
+          <View style={styles.lobbyCodePendingBox}>
+            <Text style={styles.lobbyCodePendingText}>Lobby code not set yet — check back closer to lobby open.</Text>
+          </View>
+        )}
 
         <View style={styles.factsGrid}>
           <View style={styles.factTile}>
@@ -260,6 +301,11 @@ const styles = StyleSheet.create({
   countdownRow: { flexDirection: 'row', alignItems: 'baseline', gap: 12 },
   countdownValue: { fontFamily: fontFamily.rajdhaniBold, fontSize: 46, color: color.ember },
   countdownCaption: { fontFamily: fontFamily.interRegular, fontSize: 12, lineHeight: 16, color: color.textMuted },
+  lobbyCodeBox: { height: 56, borderWidth: 1, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, gap: 10 },
+  lobbyCodeLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.1 * 10 },
+  lobbyCodeValue: { fontFamily: fontFamily.rajdhaniBold, fontSize: 22, letterSpacing: 0.03 * 22, ...tabularNums },
+  lobbyCodePendingBox: { borderWidth: 1, borderColor: color.hairline, backgroundColor: color.fillMuted, paddingVertical: 12, paddingHorizontal: 14 },
+  lobbyCodePendingText: { fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted },
   factsGrid: { flexDirection: 'row', backgroundColor: color.hairline, gap: 1 },
   factTile: { flex: 1, backgroundColor: color.panel, padding: 13, gap: 4 },
   factValue: { fontFamily: fontFamily.rajdhaniBold, fontSize: 17, color: color.textPrimary },

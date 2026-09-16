@@ -9,6 +9,7 @@ export type UpcomingGame = {
   lockAt: string;
   map: string | null;
   muted: boolean;
+  lobbyCode: string | null;
 };
 
 export type UpcomingGamesData = {
@@ -33,7 +34,7 @@ async function fetchUpcomingGames(teamId: string, userId: string): Promise<Upcom
 
   const { data: games } = await supabase
     .from('games')
-    .select('id, round_number, game_number, scheduled_at, map')
+    .select('id, round_number, game_number, scheduled_at, map, lobby_code')
     .eq('league_id', leagueTeam.league_id)
     .in('status', ['scheduled', 'lobby_open'])
     .order('scheduled_at', { ascending: true });
@@ -55,6 +56,7 @@ async function fetchUpcomingGames(teamId: string, userId: string): Promise<Upcom
       lockAt: new Date(new Date(g.scheduled_at).getTime() - 10 * 60_000).toISOString(),
       map: g.map,
       muted: mutedSet.has(g.id),
+      lobbyCode: g.lobby_code,
     })),
   };
 }
