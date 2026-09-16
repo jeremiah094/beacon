@@ -69,6 +69,11 @@ export function usePushRegistration(userId: string | undefined) {
  * event with the `data.url` we set in the match-notify function. */
 export function useNotificationDeepLinks() {
   useEffect(() => {
+    // Same web scope-out as usePushRegistration above — there's no push
+    // subscription on web to have delivered a notification response from,
+    // and getLastNotificationResponseAsync throws there.
+    if (Platform.OS === 'web') return;
+
     function handle(response: Notifications.NotificationResponse) {
       const url = response.notification.request.content.data?.url as string | undefined;
       if (url) {
