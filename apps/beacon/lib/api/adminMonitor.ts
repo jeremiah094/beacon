@@ -165,6 +165,24 @@ export function useAdvanceGamePhase(gameId: string | undefined) {
   });
 }
 
+/** Lets an admin type in the real private-match code they created in
+ * Apex, instead of relying on the random placeholder assigned when the
+ * lobby opens. Writing it here is what makes it show up for every
+ * approved team on their match lobby screen (useMatchLobby subscribes
+ * to Realtime on this row). */
+export function useSetLobbyCode(gameId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (lobbyCode: string) => {
+      const { error } = await supabase.from('games').update({ lobby_code: lobbyCode }).eq('id', gameId as string);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminMonitor', gameId] });
+    },
+  });
+}
+
 export function useDecideSubstitution(gameId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({

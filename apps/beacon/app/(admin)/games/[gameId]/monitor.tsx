@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ClipboardAPI from 'expo-clipboard';
 import { AdminShell } from '../../../../components/admin/AdminShell';
@@ -9,7 +9,7 @@ import { Diamond } from '../../../../components/Diamond';
 import { Spinner } from '../../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../../theme/tokens';
 import { useSession } from '../../../../lib/hooks/useSession';
-import { LineupState, MonitorTeam, useAdvanceGamePhase, useDecideSubstitution, useMonitorGame } from '../../../../lib/api/adminMonitor';
+import { LineupState, MonitorTeam, useAdvanceGamePhase, useDecideSubstitution, useMonitorGame, useSetLobbyCode } from '../../../../lib/api/adminMonitor';
 
 // Reference: Beacon 14 Monitor Live Match.dc.html. Two deliberate
 // departures from the source, both because Beacon's real integrations
@@ -30,10 +30,13 @@ export default function MonitorLiveMatch() {
   const { data: game, isLoading } = useMonitorGame(gameId);
   const advance = useAdvanceGamePhase(gameId);
   const decideSub = useDecideSubstitution(gameId);
+  const setLobbyCode = useSetLobbyCode(gameId);
 
   const [filter, setFilter] = useState<'All' | 'Needs attention' | 'Ready'>('All');
   const [copied, setCopied] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [editingCode, setEditingCode] = useState(false);
+  const [codeInput, setCodeInput] = useState('');
 
   useEffect(() => {
     const t = setInterval(() => setNow(Date.now()), 1000);
@@ -106,6 +109,18 @@ export default function MonitorLiveMatch() {
     setTimeout(() => setCopied(false), 3000);
   }
 
+  function startEditCode() {
+    setCodeInput(game?.lobbyCode ?? '');
+    setEditingCode(true);
+  }
+
+  async function saveCode() {
+    const code = codeInput.trim().toUpperCase();
+    if (!code) return;
+    await setLobbyCode.mutateAsync(code);
+    setEditingCode(false);
+  }
+
   const codeChars = (game.lobbyCode ?? '·····').split('');
 
   return (
@@ -164,19 +179,48 @@ export default function MonitorLiveMatch() {
           <View style={{ gap: 9 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
               <Text style={styles.stripLabel}>LOBBY CODE</Text>
-              {game.lobbyCode && (
-                <Pressable onPress={copyCode}>
-                  <Text style={[styles.copyLabel, { color: copied ? color.verified : color.textMuted }]}>{copied ? 'COPIED' : 'COPY'}</Text>
-                </Pressable>
+              {!editingCode && (
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  {game.lobbyCode && (
+                    <Pressable onPress={copyCode}>
+                      <Text style={[styles.copyLabel, { color: copied ? color.verified : color.textMuted }]}>{copied ? 'COPIED' : 'COPY'}</Text>
+                    </Pressable>
+                  )}
+                  <Pressable onPress={startEditCode}>
+                    <Text style={styles.copyLabel}>{game.lobbyCode ? 'EDIT' : 'SET CODE'}</Text>
+                  </Pressable>
+                </View>
               )}
             </View>
-            <View style={{ flexDirection: 'row', gap: 6 }}>
-              {codeChars.map((ch, i) => (
-                <View key={i} style={styles.codeBox}>
-                  <Text style={styles.codeChar}>{ch}</Text>
-                </View>
-              ))}
-            </View>
+            {editingCode ? (
+              <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <TextInput
+                  value={codeInput}
+                  onChangeText={setCodeInput}
+                  placeholder="e.g. XKQ4R"
+                  placeholderTextColor={color.fillPlaceholder}
+                  autoCapitalize="characters"
+                  autoFocus
+                  style={styles.codeInput}
+                />
+                <Pressable onPress={saveCode} disabled={setLobbyCode.isPending || !codeInput.trim()}>
+                  <View style={styles.codeSaveBtn}>
+                    <Text style={styles.codeSaveLabel}>Save</Text>
+                  </View>
+                </Pressable>
+                <Pressable onPress={() => setEditingCode(false)}>
+                  <Text style={styles.copyLabel}>CANCEL</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <View style={{ flexDirection: 'row', gap: 6 }}>
+                {codeChars.map((ch, i) => (
+                  <View key={i} style={styles.codeBox}>
+                    <Text style={styles.codeChar}>{ch}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         </View>
       }
@@ -337,6 +381,20 @@ const styles = StyleSheet.create({
   copyLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.08 * 10 },
   codeBox: { flex: 1, height: 52, minWidth: 32, backgroundColor: color.panel, borderWidth: 1, borderColor: color.hairlineInput, alignItems: 'center', justifyContent: 'center' },
   codeChar: { fontFamily: fontFamily.rajdhaniBold, fontSize: 26, letterSpacing: 0.04 * 26, color: color.textPrimary },
+  codeInput: {
+    height: 44,
+    width: 140,
+    backgroundColor: color.panel,
+    borderWidth: 1,
+    borderColor: color.hairlineInput,
+    color: color.textPrimary,
+    fontFamily: fontFamily.rajdhaniBold,
+    fontSize: 18,
+    letterSpacing: 0.04 * 18,
+    paddingHorizontal: 12,
+  },
+  codeSaveBtn: { height: 44, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: color.textPrimary },
+  codeSaveLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.base },
   sectionLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.16 * 10, textTransform: 'uppercase', color: color.textMuted },
   readyLine: { fontFamily: fontFamily.interRegular, fontSize: 11, color: color.textMuted },
   filterChip: { paddingVertical: 8, paddingHorizontal: 13, borderWidth: 1 },
