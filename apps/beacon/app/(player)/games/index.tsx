@@ -122,7 +122,10 @@ export default function UpcomingGames() {
 }
 
 function NextGameCard({ game, onToggleMute, teamId }: { game: UpcomingGame; onToggleMute: () => void; teamId: string }) {
-  const countdown = useCountdownLabel(game.scheduledAt) ?? '0h 00m 00s';
+  // The lobby opens 15 minutes before the game itself, giving teams time to
+  // join and get ready — count down to that moment, not to the game start.
+  const lobbyOpensAt = new Date(new Date(game.scheduledAt).getTime() - 15 * 60_000).toISOString();
+  const countdown = useCountdownLabel(lobbyOpensAt) ?? '0h 00m 00s';
   const [copied, setCopied] = useState(false);
 
   async function handleCopyCode() {
