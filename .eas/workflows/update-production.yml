@@ -10,10 +10,12 @@ on:
 jobs:
   publish_update:
     name: Publish update
-    type: update
     defaults:
       run:
         working_directory: ./apps/beacon
-    params:
-      channel: production
-      message: ${{ inputs.message || 'Manual update' }}
+    steps:
+      - uses: eas/checkout
+      - uses: eas/use_npm_token
+      - uses: eas/install_node_modules
+      - name: Publish update
+        run: npx eas-cli update --channel production --non-interactive --message "${{ inputs.message || 'Manual update' }}"
