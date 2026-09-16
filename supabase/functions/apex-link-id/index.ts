@@ -134,6 +134,7 @@ Deno.serve(async (req: Request) => {
     return jsonResponse({ ok: false, reason: "not_found", message: FAILURE_COPY.not_found }, 200);
   }
 
+  const gamertag: string = typeof global.name === "string" && global.name.length > 0 ? global.name : player;
   const rankName: string | null = global.rank?.rankName ?? null;
   const rankScore: number | null = typeof global.rank?.rankScore === "number" ? global.rank.rankScore : null;
   const level: number | null = typeof global.level === "number" ? global.level : null;
@@ -149,7 +150,7 @@ Deno.serve(async (req: Request) => {
 
   const { error: profileError } = await admin
     .from("profiles")
-    .update({ apex_uid: uid, apex_platform: platform, apex_verified_at: fetchedAt })
+    .update({ gamertag, apex_uid: uid, apex_platform: platform, apex_verified_at: fetchedAt })
     .eq("id", user.id);
   if (profileError) {
     console.error("apex-link-id: failed to update profile", profileError);
