@@ -9,22 +9,44 @@ import { Spinner } from '../../../components/Spinner';
 import { color, fontFamily } from '../../../theme/tokens';
 import { useSession } from '../../../lib/hooks/useSession';
 import { useActiveTeam } from '../../../lib/hooks/useActiveTeam';
-import { MyTeam, useCreateTeam, useMyTeams } from '../../../lib/api/teams';
+import { MyTeam, useCreateTeam, useMyTeams, useRegisterTeamForLeague } from '../../../lib/api/teams';
+import { useLeagueName } from '../../../lib/api/leagues';
 
 // Reference: Beacon 04 My Teams.dc.html
 export default function MyTeams() {
   const { userId } = useSession();
   const { data: teams, isLoading } = useMyTeams(userId);
   const { joinLeagueId } = useLocalSearchParams<{ joinLeagueId?: string }>();
+  const { data: joinLeagueName } = useLeagueName(joinLeagueId);
   const list = teams ?? [];
   const { activeTeamId, setActiveTeam } = useActiveTeam(list.map((t) => t.id));
-  const [showCreate, setShowCreate] = useState(!!joinLeagueId);
+  const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
   const [tag, setTag] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
   const createTeam = useCreateTeam(userId);
+  const registerTeam = useRegisterTeamForLeague(userId);
+  const [registerError, setRegisterError] = useState<string | null>(null);
+  const [justRegisteredId, setJustRegisteredId] = useState<string | null>(null);
 
   const atLimit = list.length >= 3;
+  const captainTeams = list.filter((t) => t.role === 'captain');
+  // First-timer joining a league with no team yet — go straight to create.
+  // Otherwise default to the register picker below, since re-registering
+  // an existing team is normally what "Join" from the league hub means.
+  const displayCreate = showCreate || (!!joinLeagueId && !isLoading && list.length === 0);
+
+  async function handleRegister(teamId: string) {
+    if (!joinLeagueId) return;
+    setRegisterError(null);
+    try {
+      await registerTeam.mutateAsync({ teamId, leagueId: joinLeagueId });
+      setJustRegisteredId(teamId);
+    } catch (err) {
+      const message = (err as { message?: string } | null)?.message;
+      setRegisterError(message || 'Could not register the team. Try again.');
+    }
+  }
 
   async function handleCreate() {
     if (!name.trim()) return;
@@ -64,6 +86,51 @@ export default function MyTeams() {
       </View>
 
       <ScrollView contentContainerStyle={styles.list}>
+        {!isLoading && joinLeagueId && captainTeams.length > 0 && (
+          <View style={styles.registerBox}>
+            <Text style={styles.createLabel}>Register a team for {joinLeagueName ?? 'this league'}</Text>
+            <Text style={styles.registerHint}>Pick one of your teams, or create a new one below.</Text>
+            {captainTeams.map((t) => {
+              const already = t.leagueId === joinLeagueId || justRegisteredId === t.id;
+              return (
+                <View key={t.id} style={styles.registerRow}>
+                  <Text style={styles.registerTeamName}>{t.name}</Text>
+                  <Pressable onPress={() => !already && handleRegister(t.id)} disabled={already || registerTeam.isPending}>
+                    {({ pressed, hovered }: any) => (
+                      <View
+                        style={[
+                          styles.registerButton,
+                          already && { borderColor: color.verifiedTintBorder, backgroundColor: color.verifiedTint },
+                          !already && (pressed || hovered) && { backgroundColor: color.fillHover },
+                        ]}
+                      >
+                        <Text style={[styles.registerButtonLabel, already && { color: color.verified }]}>
+                          {already ? 'Registered' : 'Register'}
+                        </Text>
+                      </View>
+                    )}
+                  </Pressable>
+                </View>
+              );
+            })}
+            {registerError && (
+              <View style={styles.noteRow}>
+                <View style={styles.noteBar} />
+                <Text style={[styles.noteText, { color: color.textPrimary }]}>{registerError}</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {!isLoading && joinLeagueId && captainTeams.length === 0 && list.length > 0 && (
+          <View style={styles.noteRow}>
+            <View style={styles.noteBar} />
+            <Text style={styles.noteText}>
+              Only a team's captain can register it. Ask your captain to register an existing team, or create a new one below.
+            </Text>
+          </View>
+        )}
+
         {isLoading ? (
           <View style={styles.loadingBox}>
             <Spinner size={20} />
@@ -80,7 +147,7 @@ export default function MyTeams() {
           ))
         )}
 
-        {!atLimit && !showCreate && (
+        {!atLimit && !displayCreate && (
           <Pressable onPress={() => setShowCreate(true)}>
             {({ hovered }: any) => (
               <View style={[styles.emptySlot, hovered && { borderColor: 'rgba(242,241,236,0.45)' }]}>
@@ -91,10 +158,14 @@ export default function MyTeams() {
           </Pressable>
         )}
 
-        {showCreate && (
+        {displayCreate && (
           <View style={styles.createForm}>
             <Text style={styles.createLabel}>
-              {joinLeagueId ? 'Create a team to register' : 'Create a new team'}
+              {joinLeagueId
+                ? captainTeams.length > 0
+                  ? 'Or create a new team to register'
+                  : 'Create a team to register'
+                : 'Create a new team'}
             </Text>
             <TextInput
               value={name}
@@ -282,6 +353,12 @@ const styles = StyleSheet.create({
   },
   emptySlotTitle: { fontFamily: fontFamily.rajdhaniSemiBold, fontSize: 15, letterSpacing: 0.14 * 15, color: color.textMuted },
   emptySlotCopy: { fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted },
+  registerBox: { gap: 12, padding: 18, borderWidth: 1, borderColor: color.hairline, backgroundColor: color.panel },
+  registerHint: { fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted, marginTop: -4 },
+  registerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  registerTeamName: { fontFamily: fontFamily.rajdhaniSemiBold, fontSize: 16, color: color.textPrimary, flex: 1, minWidth: 0 },
+  registerButton: { height: 38, paddingHorizontal: 16, borderWidth: 1, borderColor: color.hairlineStrong, alignItems: 'center', justifyContent: 'center' },
+  registerButtonLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.textPrimary },
   createForm: { gap: 10, padding: 18, borderWidth: 1, borderColor: color.hairline, backgroundColor: color.panel },
   createLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 11, letterSpacing: 0.12 * 11, color: color.textMuted, textTransform: 'uppercase' },
   createInput: {

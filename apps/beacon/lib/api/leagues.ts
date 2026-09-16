@@ -53,3 +53,16 @@ async function fetchLeagues(): Promise<LeagueSummary[]> {
 export function useLeagues() {
   return useQuery({ queryKey: ['leagues'], queryFn: fetchLeagues });
 }
+
+async function fetchLeagueName(leagueId: string): Promise<string | null> {
+  const { data } = await supabase.from('leagues').select('name').eq('id', leagueId).single();
+  return data?.name ?? null;
+}
+
+export function useLeagueName(leagueId: string | undefined) {
+  return useQuery({
+    queryKey: ['leagueName', leagueId],
+    queryFn: () => fetchLeagueName(leagueId as string),
+    enabled: !!leagueId,
+  });
+}

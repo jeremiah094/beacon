@@ -89,11 +89,20 @@ export default function UpcomingGames() {
       </ScrollView>
 
       <View style={styles.dockedFooter}>
-        <Pressable onPress={() => activeTeam?.leagueId && router.push(`/(player)/leagues/${activeTeam.leagueId}/standings` as any)}>
+        <Pressable
+          onPress={() => activeTeam?.leagueId && router.push(`/(player)/leagues/${activeTeam.leagueId}/standings` as any)}
+          disabled={!activeTeam?.leagueId}
+        >
           {({ pressed, hovered }: any) => (
-            <View style={[styles.standingsButton, (pressed || hovered) && { borderColor: color.textPrimary, backgroundColor: color.fillMuted }]}>
+            <View
+              style={[
+                styles.standingsButton,
+                !activeTeam?.leagueId && { opacity: 0.5 },
+                !!activeTeam?.leagueId && (pressed || hovered) && { borderColor: color.textPrimary, backgroundColor: color.fillMuted },
+              ]}
+            >
               <Text style={styles.standingsLabel}>League standings</Text>
-              <Text style={styles.standingsMeta}>→</Text>
+              <Text style={styles.standingsMeta}>{activeTeam?.leagueId ? '→' : 'Not in a league yet'}</Text>
             </View>
           )}
         </Pressable>

@@ -127,3 +127,24 @@ export function useCreateTeam(userId: string | undefined) {
     },
   });
 }
+
+/** Registers a team the player already has (rather than creating a new
+ * one) for a league. league_teams_insert requires the caller be that
+ * team's captain — teammates picking this option will hit an RLS error,
+ * surfaced as-is since the "Register" action is only ever shown to the
+ * captain in the UI. */
+export function useRegisterTeamForLeague(userId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ teamId, leagueId }: { teamId: string; leagueId: string }) => {
+      const { error } = await supabase
+        .from('league_teams')
+        .insert({ league_id: leagueId, team_id: teamId, status: 'pending', registered_at: new Date().toISOString() });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myTeams', userId] });
+      queryClient.invalidateQueries({ queryKey: ['leagues'] });
+    },
+  });
+}
