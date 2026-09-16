@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ClipboardAPI from 'expo-clipboard';
 import { AdminShell } from '../../../../components/admin/AdminShell';
@@ -313,7 +313,8 @@ export default function MonitorLiveMatch() {
         </View>
       </View>
 
-      <View style={styles.table}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }}>
+      <View style={[styles.table, { minWidth: 640 }]}>
         <View style={styles.tableHeaderRow}>
           <Text style={[styles.tableHeaderCell, { width: 30 }]}>#</Text>
           <Text style={[styles.tableHeaderCell, { flex: 1 }]}>TEAM</Text>
@@ -347,6 +348,7 @@ export default function MonitorLiveMatch() {
           );
         })}
       </View>
+      </ScrollView>
 
       <Text style={styles.footnote}>
         Lobby presence isn't trackable via Beacon's Apex integration, so every row reads unknown rather than assuming a team is absent.
@@ -372,7 +374,7 @@ function formatClockTime(iso: string): string {
 }
 
 const styles = StyleSheet.create({
-  statusStrip: { paddingVertical: 18, paddingHorizontal: 28, borderBottomWidth: 1, borderBottomColor: color.hairline, backgroundColor: '#0E0F12', flexDirection: 'row', gap: 24, alignItems: 'center' },
+  statusStrip: { paddingVertical: 18, paddingHorizontal: 28, borderBottomWidth: 1, borderBottomColor: color.hairline, backgroundColor: '#0E0F12', flexDirection: 'row', flexWrap: 'wrap', rowGap: 18, gap: 24, alignItems: 'center' },
   stripLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.14 * 9, color: color.textMuted },
   phaseLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.06 * 9 },
   phaseNote: { fontFamily: fontFamily.interRegular, fontSize: 11, lineHeight: 15, color: color.textMuted, ...tabularNums },

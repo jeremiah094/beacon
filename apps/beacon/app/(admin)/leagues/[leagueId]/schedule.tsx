@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { AdminShell } from '../../../../components/admin/AdminShell';
 import { AdminButton } from '../../../../components/admin/AdminButton';
@@ -31,6 +31,8 @@ export default function ScheduleMatches() {
   const { data: approvedTeams } = useApprovedTeamCount(leagueId);
   const saveGame = useSaveGame(leagueId);
   const cancelGame = useCancelGame(leagueId);
+  const { width } = useWindowDimensions();
+  const isMobile = width < 860;
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [round, setRound] = useState('');
@@ -202,17 +204,17 @@ export default function ScheduleMatches() {
         </>
       }
     >
-      <View style={styles.formRow}>
-        <Field label="Match" style={{ width: 110 }}>
+      <View style={[styles.formRow, isMobile && styles.formRowMobile]}>
+        <Field label="Match" style={isMobile ? { width: '100%' } : { width: 110 }}>
           <TextInput value={round} onChangeText={(v) => { setRound(v); setJustPublishedId(null); }} placeholder="10" placeholderTextColor={color.fillPlaceholder} keyboardType="number-pad" style={[styles.input, tabularNums]} />
         </Field>
-        <Field label="Game" style={{ flex: 1 }}>
+        <Field label="Game" style={isMobile ? { width: '100%' } : { flex: 1 }}>
           <TextInput value={gameNumber} onChangeText={(v) => { setGameNumber(v); setJustPublishedId(null); }} placeholder="1" placeholderTextColor={color.fillPlaceholder} keyboardType="number-pad" style={[styles.input, tabularNums]} />
         </Field>
-        <Field label="Date" style={{ flex: 1 }}>
+        <Field label="Date" style={isMobile ? { width: '100%' } : { flex: 1 }}>
           <AdminDateField value={date} onChange={(v) => { setDate(v); setJustPublishedId(null); }} style={tabularNums} />
         </Field>
-        <Field label="Lobby opens" style={{ flex: 1.2 }}>
+        <Field label="Lobby opens" style={isMobile ? { width: '100%' } : { flex: 1.2 }}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
             {TIMES.map((t) => (
               <Pressable key={t} style={{ flex: 1 }} onPress={() => { setTime(t); setJustPublishedId(null); }}>
@@ -260,7 +262,8 @@ export default function ScheduleMatches() {
             <Text style={styles.emptyBody}>No games scheduled yet. Fill the form above and publish the first one.</Text>
           </View>
         ) : (
-          <View style={styles.table}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }}>
+          <View style={[styles.table, { minWidth: 640 }]}>
             <View style={styles.tableHeaderRow}>
               <Text style={[styles.tableHeaderCell, { width: 150 }]}>GAME</Text>
               <Text style={[styles.tableHeaderCell, { width: 150 }]}>WHEN</Text>
@@ -306,6 +309,7 @@ export default function ScheduleMatches() {
               );
             })}
           </View>
+          </ScrollView>
         )}
       </View>
     </AdminShell>
@@ -336,6 +340,7 @@ function formatGameWhen(iso: string): string {
 
 const styles = StyleSheet.create({
   formRow: { flexDirection: 'row', gap: 16, alignItems: 'flex-end' },
+  formRowMobile: { flexDirection: 'column', alignItems: 'stretch' },
   fieldLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.16 * 10, textTransform: 'uppercase', color: color.textMuted },
   input: { height: 46, backgroundColor: color.panel, borderWidth: 1, borderColor: color.hairlineInput, color: color.textPrimary, fontSize: 15, paddingHorizontal: 14, fontFamily: fontFamily.interRegular },
   timeChip: { height: 46, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },

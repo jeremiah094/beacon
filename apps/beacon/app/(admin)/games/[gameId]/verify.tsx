@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { AdminShell } from '../../../../components/admin/AdminShell';
 import { AdminButton } from '../../../../components/admin/AdminButton';
@@ -228,7 +228,8 @@ export default function VerifyResults() {
         </View>
       )}
 
-      <View style={styles.table}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }}>
+      <View style={[styles.table, { minWidth: 560 }]}>
         <View style={styles.tableHeaderRow}>
           <Text style={[styles.tableHeaderCell, { width: 66 }]}>PLACE</Text>
           <Text style={[styles.tableHeaderCell, { flex: 1 }]}>TEAM</Text>
@@ -261,6 +262,7 @@ export default function VerifyResults() {
           </View>
         ))}
       </View>
+      </ScrollView>
 
       {missingRows.length > 0 && (
         <View style={{ flexDirection: 'row', gap: 9, alignItems: 'flex-start' }}>

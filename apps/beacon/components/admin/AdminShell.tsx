@@ -1,5 +1,5 @@
-import { ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ReactNode, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Logo } from '../Logo';
@@ -37,6 +37,13 @@ const NAV_ITEMS: { key: AdminNavKey; label: string; icon: keyof typeof Ionicons.
   { key: 'results', label: 'Results', icon: 'flag-outline' },
 ];
 
+// Below this viewport width the fixed 236px sidebar + 372px rail alongside
+// a scrollable middle column stop fitting a phone-sized browser (the admin
+// console is a web-only surface — see BUILD.md task 9 — but still gets
+// opened from a phone browser in practice), so the shell switches to a
+// collapsible drawer and a stacked rail instead of the 3-column layout.
+const MOBILE_BREAKPOINT = 860;
+
 export function AdminShell({
   active,
   activeLeagueId,
@@ -52,6 +59,9 @@ export function AdminShell({
   const { userId } = useSession();
   const { data: counts } = useAdminNavCounts();
   const { data: profile } = useAdminProfile(userId);
+  const { width } = useWindowDimensions();
+  const isMobile = width < MOBILE_BREAKPOINT;
+  const [navOpen, setNavOpen] = useState(false);
 
   function hrefFor(key: AdminNavKey): string {
     if (key === 'leagues') return '/(admin)/leagues';
@@ -69,69 +79,100 @@ export function AdminShell({
     return String(counts.results);
   }
 
-  return (
-    <View style={styles.root}>
-      <View style={styles.sidebar}>
-        <View style={styles.sidebarHeader}>
-          <View style={styles.wordmarkRow}>
-            <Logo size={24} />
-            <Text style={styles.wordmark}>BEACON</Text>
-          </View>
-          <Text style={styles.consoleLabel}>ADMIN CONSOLE</Text>
-        </View>
+  function goTo(key: AdminNavKey) {
+    setNavOpen(false);
+    router.push(hrefFor(key) as any);
+  }
 
-        <View style={styles.navList}>
-          {NAV_ITEMS.map((item) => {
-            const isActive = item.key === active;
-            return (
-              <Pressable key={item.key} onPress={() => router.push(hrefFor(item.key) as any)}>
-                {({ hovered }: any) => (
-                  <View
-                    style={[
-                      styles.navRow,
-                      { backgroundColor: isActive ? color.panel : hovered ? 'rgba(242,241,236,0.04)' : 'transparent' },
-                      { borderLeftColor: isActive ? color.textPrimary : 'transparent' },
-                    ]}
-                  >
-                    <View style={styles.navLabelRow}>
-                      <Ionicons name={item.icon} size={15} color={isActive ? color.textPrimary : color.textMuted} />
-                      <Text style={[styles.navLabel, { color: isActive ? color.textPrimary : color.textMuted }]}>{item.label}</Text>
-                    </View>
-                    <Text style={styles.navCount}>{countFor(item.key)}</Text>
+  const sidebarContent = (
+    <>
+      <View style={styles.sidebarHeader}>
+        <View style={styles.wordmarkRow}>
+          <Logo size={24} />
+          <Text style={styles.wordmark}>BEACON</Text>
+        </View>
+        <Text style={styles.consoleLabel}>ADMIN CONSOLE</Text>
+      </View>
+
+      <View style={styles.navList}>
+        {NAV_ITEMS.map((item) => {
+          const isActive = item.key === active;
+          return (
+            <Pressable key={item.key} onPress={() => goTo(item.key)}>
+              {({ hovered }: any) => (
+                <View
+                  style={[
+                    styles.navRow,
+                    { backgroundColor: isActive ? color.panel : hovered ? 'rgba(242,241,236,0.04)' : 'transparent' },
+                    { borderLeftColor: isActive ? color.textPrimary : 'transparent' },
+                  ]}
+                >
+                  <View style={styles.navLabelRow}>
+                    <Ionicons name={item.icon} size={15} color={isActive ? color.textPrimary : color.textMuted} />
+                    <Text style={[styles.navLabel, { color: isActive ? color.textPrimary : color.textMuted }]}>{item.label}</Text>
                   </View>
-                )}
-              </Pressable>
-            );
-          })}
-          <View style={[styles.navRow, { opacity: 0.4 }]}>
-            <View style={styles.navLabelRow}>
-              <Ionicons name="settings-outline" size={15} color={color.textMuted} />
-              <Text style={[styles.navLabel, { color: color.textMuted }]}>Settings</Text>
-            </View>
+                  <Text style={styles.navCount}>{countFor(item.key)}</Text>
+                </View>
+              )}
+            </Pressable>
+          );
+        })}
+        <View style={[styles.navRow, { opacity: 0.4 }]}>
+          <View style={styles.navLabelRow}>
+            <Ionicons name="settings-outline" size={15} color={color.textMuted} />
+            <Text style={[styles.navLabel, { color: color.textMuted }]}>Settings</Text>
           </View>
-        </View>
-
-        <View style={styles.sidebarFooter}>
-          <View style={styles.avatarBox}>
-            <Text style={styles.avatarLabel}>{profile?.initials ?? '··'}</Text>
-          </View>
-          <View style={{ gap: 3, minWidth: 0, flex: 1 }}>
-            <Text style={styles.footerName}>{profile?.name ?? 'Admin'}</Text>
-            <Text style={styles.footerRole}>League organiser</Text>
-          </View>
-          <Pressable onPress={() => supabase.auth.signOut().then(() => router.replace('/(auth)/sign-up'))}>
-            {({ hovered }: any) => (
-              <View style={styles.signOutRow}>
-                <Ionicons name="log-out-outline" size={14} color={hovered ? color.textPrimary : color.textMuted} />
-                <Text style={[styles.signOutLabel, hovered && { color: color.textPrimary }]}>Sign out</Text>
-              </View>
-            )}
-          </Pressable>
         </View>
       </View>
 
+      <View style={styles.sidebarFooter}>
+        <View style={styles.avatarBox}>
+          <Text style={styles.avatarLabel}>{profile?.initials ?? '··'}</Text>
+        </View>
+        <View style={{ gap: 3, minWidth: 0, flex: 1 }}>
+          <Text style={styles.footerName}>{profile?.name ?? 'Admin'}</Text>
+          <Text style={styles.footerRole}>League organiser</Text>
+        </View>
+        <Pressable onPress={() => supabase.auth.signOut().then(() => router.replace('/(auth)/sign-up'))}>
+          {({ hovered }: any) => (
+            <View style={styles.signOutRow}>
+              <Ionicons name="log-out-outline" size={14} color={hovered ? color.textPrimary : color.textMuted} />
+              <Text style={[styles.signOutLabel, hovered && { color: color.textPrimary }]}>Sign out</Text>
+            </View>
+          )}
+        </Pressable>
+      </View>
+    </>
+  );
+
+  return (
+    <View style={styles.root}>
+      {!isMobile && <View style={styles.sidebar}>{sidebarContent}</View>}
+
+      {isMobile && navOpen && (
+        <>
+          <Pressable style={styles.scrim} onPress={() => setNavOpen(false)} />
+          <View style={styles.drawer}>{sidebarContent}</View>
+        </>
+      )}
+
       <View style={styles.main}>
-        <View style={styles.topBar}>
+        {isMobile && (
+          <View style={styles.mobileHeader}>
+            <Pressable onPress={() => setNavOpen(true)} hitSlop={10}>
+              <Ionicons name="menu-outline" size={22} color={color.textPrimary} />
+            </Pressable>
+            <View style={styles.wordmarkRow}>
+              <Logo size={18} />
+              <Text style={styles.wordmarkSmall}>BEACON</Text>
+            </View>
+            <View style={[styles.avatarBox, { width: 28, height: 28 }]}>
+              <Text style={styles.avatarLabel}>{profile?.initials ?? '··'}</Text>
+            </View>
+          </View>
+        )}
+
+        <View style={[styles.topBar, isMobile && styles.topBarMobile]}>
           <View style={{ gap: 9, flex: 1, minWidth: 0 }}>
             <View style={styles.breadcrumbRow}>
               {breadcrumbs.map((b, i) => (
@@ -150,7 +191,7 @@ export function AdminShell({
               ))}
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 16, flexWrap: 'wrap' }}>
-              <Text style={styles.title}>{title}</Text>
+              <Text style={[styles.title, isMobile && styles.titleMobile]}>{title}</Text>
               {titleMeta ? <Text style={styles.titleMeta}>{titleMeta}</Text> : null}
             </View>
           </View>
@@ -159,12 +200,22 @@ export function AdminShell({
 
         {belowTopBar}
 
-        <View style={styles.body}>
-          <ScrollView contentContainerStyle={[styles.mainScroll, !!rail && { borderRightWidth: 1, borderRightColor: color.hairline }]}>
+        <View style={[styles.body, isMobile && styles.bodyMobile]}>
+          <ScrollView
+            contentContainerStyle={[
+              styles.mainScroll,
+              isMobile && styles.mainScrollMobile,
+              !!rail && !isMobile && { borderRightWidth: 1, borderRightColor: color.hairline },
+              !!rail && isMobile && { borderBottomWidth: 1, borderBottomColor: color.hairline },
+            ]}
+          >
             {children}
           </ScrollView>
           {rail ? (
-            <ScrollView style={{ width: railWidth, flexGrow: 0 }} contentContainerStyle={styles.railScroll}>
+            <ScrollView
+              style={isMobile ? { width: '100%', flexGrow: 0 } : { width: railWidth, flexGrow: 0 }}
+              contentContainerStyle={styles.railScroll}
+            >
               {rail}
             </ScrollView>
           ) : null}
@@ -177,9 +228,23 @@ export function AdminShell({
 const styles = StyleSheet.create({
   root: { flex: 1, flexDirection: 'row', backgroundColor: color.base, minHeight: '100%' },
   sidebar: { width: 236, borderRightWidth: 1, borderRightColor: color.hairline, backgroundColor: '#0E0F12' },
+  scrim: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 10 },
+  drawer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    bottom: 0,
+    width: 260,
+    maxWidth: '82%',
+    borderRightWidth: 1,
+    borderRightColor: color.hairline,
+    backgroundColor: '#0E0F12',
+    zIndex: 11,
+  },
   sidebarHeader: { padding: 22, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: color.hairline, gap: 8 },
   wordmarkRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
   wordmark: { fontFamily: fontFamily.rajdhaniBold, fontSize: 22, letterSpacing: 0.06 * 22, color: color.textPrimary },
+  wordmarkSmall: { fontFamily: fontFamily.rajdhaniBold, fontSize: 17, letterSpacing: 0.06 * 17, color: color.textPrimary },
   consoleLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.18 * 9, color: color.textMuted },
   navList: { padding: 12, gap: 2 },
   navRow: {
@@ -211,6 +276,16 @@ const styles = StyleSheet.create({
   signOutRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   signOutLabel: { fontFamily: fontFamily.interMedium, fontSize: 11, color: color.textMuted },
   main: { flex: 1, minWidth: 0 },
+  mobileHeader: {
+    height: 52,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: color.hairline,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0E0F12',
+  },
   topBar: {
     padding: 20,
     paddingHorizontal: 28,
@@ -222,14 +297,18 @@ const styles = StyleSheet.create({
     gap: 24,
     flexWrap: 'wrap',
   },
+  topBarMobile: { padding: 16, gap: 14 },
   breadcrumbRow: { flexDirection: 'row', alignItems: 'center', gap: 9, flexWrap: 'wrap' },
   breadcrumbSep: { color: 'rgba(242,241,236,0.28)', fontSize: 11 },
   breadcrumbLink: { fontFamily: fontFamily.interRegular, fontSize: 11, color: color.textMuted },
   breadcrumbCurrent: { fontFamily: fontFamily.interRegular, fontSize: 11, color: color.textPrimary },
   title: { fontFamily: fontFamily.rajdhaniBold, fontSize: 34, letterSpacing: 0.01 * 34, color: color.textPrimary },
+  titleMobile: { fontSize: 24 },
   titleMeta: { fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted },
-  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
   body: { flex: 1, flexDirection: 'row', minWidth: 0 },
+  bodyMobile: { flexDirection: 'column' },
   mainScroll: { flexGrow: 1, padding: 28, gap: 24, alignItems: 'stretch' },
+  mainScrollMobile: { padding: 16, gap: 18 },
   railScroll: { padding: 24, gap: 16 },
 });
