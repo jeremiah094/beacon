@@ -78,12 +78,12 @@ export default function NotificationSettings() {
         <ExampleCard
           tone="ember"
           title="Lobby opens in 10 minutes"
-          body="Round 9 · Match 2 · Division One. Lineups are locked as of now. Tap to open your lobby code."
+          body="Match 9 · Game 2 · Division One. Lineups are locked as of now. Tap to open your lobby code."
         />
         <ExampleCard
           tone="neutral"
           title="New game scheduled"
-          body="Beacon Division One added Round 10 · Match 1 — Tuesday 8 September at 20:00, Storm Point. 20-team lobby."
+          body="Beacon Division One added Match 10 · Game 1 — Tuesday 8 September at 20:00, Storm Point. 20-team lobby."
         />
 
         <View style={styles.noteBox}>

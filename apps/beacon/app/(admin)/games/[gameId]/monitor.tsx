@@ -52,7 +52,7 @@ export default function MonitorLiveMatch() {
 
   const phaseIdx = Math.max(0, PHASE_STATUS.indexOf(game.status));
   const isCancelled = game.status === 'cancelled';
-  const title = `ROUND ${game.roundNumber} · MATCH ${game.gameNumber}`;
+  const title = `MATCH ${game.roundNumber} · GAME ${game.gameNumber}`;
 
   const pendingSubs = game.teams.filter((t) => t.pendingSub);
   const lockedCount = game.teams.filter((t) => t.lineupState === 'locked').length;
@@ -115,7 +115,7 @@ export default function MonitorLiveMatch() {
       breadcrumbs={[
         { label: game.leagueName, href: `/(admin)/leagues/create?leagueId=${game.leagueId}` as any },
         { label: 'Live matches', href: `/(admin)/leagues/${game.leagueId}/schedule` as any },
-        { label: `Round ${game.roundNumber} · Match ${game.gameNumber}` },
+        { label: `Match ${game.roundNumber} · Game ${game.gameNumber}` },
       ]}
       title={title}
       titleMeta={`${game.map ?? 'Map TBC'} · ${game.teams.length}-team lobby · trios`}

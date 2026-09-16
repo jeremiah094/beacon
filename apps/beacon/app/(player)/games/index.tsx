@@ -130,7 +130,7 @@ function NextGameCard({ game, onToggleMute, teamId }: { game: UpcomingGame; onTo
               <Text style={styles.nextChipLabel}>NEXT GAME</Text>
             </View>
             <Text style={styles.nextTitle}>
-              Round {game.roundNumber} · Match {game.gameNumber}
+              Match {game.roundNumber} · Game {game.gameNumber}
             </Text>
           </View>
           <BellButton muted={game.muted} onPress={onToggleMute} size={38} />
@@ -175,7 +175,7 @@ function LaterGameRow({ game, onToggleMute }: { game: UpcomingGame; onToggleMute
       <View style={styles.laterTopRow}>
         <View style={{ gap: 5, flex: 1, minWidth: 0 }}>
           <Text style={styles.laterTitle}>
-            Round {game.roundNumber} · Match {game.gameNumber}
+            Match {game.roundNumber} · Game {game.gameNumber}
           </Text>
           <Text style={styles.laterWhen}>{formatWhen(game.scheduledAt)}</Text>
         </View>

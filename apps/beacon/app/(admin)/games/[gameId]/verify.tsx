@@ -106,10 +106,10 @@ export default function VerifyResults() {
       breadcrumbs={[
         { label: game.leagueName, href: `/(admin)/leagues/create?leagueId=${game.leagueId}` as any },
         { label: 'Results', href: `/(admin)/leagues/${game.leagueId}/schedule` as any },
-        { label: `Round ${game.roundNumber} · Match ${game.gameNumber}` },
+        { label: `Match ${game.roundNumber} · Game ${game.gameNumber}` },
       ]}
       title="VERIFY RESULTS"
-      titleMeta={`Round ${game.roundNumber} · Match ${game.gameNumber} · ${game.map ?? 'Map TBC'}`}
+      titleMeta={`Match ${game.roundNumber} · Game ${game.gameNumber} · ${game.map ?? 'Map TBC'}`}
       actions={<AdminChip label={published ? 'PUBLISHED · STANDINGS UPDATED' : 'AWAITING VERIFICATION'} tone={published ? 'verified' : 'neutral'} dotShape="circle" />}
       belowTopBar={
         <View style={styles.provenanceStrip}>

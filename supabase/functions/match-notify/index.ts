@@ -73,7 +73,7 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ ok: true, recipients: profileIds.length, tokens: 0 }));
   }
 
-  const matchLabel = `Round ${game.round_number} · Match ${game.game_number}`;
+  const matchLabel = `Match ${game.round_number} · Game ${game.game_number}`;
   const deepLinkUrl = `beacon://games/${game.id}/lobby`;
 
   const { title, message, data } =

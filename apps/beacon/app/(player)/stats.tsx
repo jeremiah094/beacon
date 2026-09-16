@@ -130,7 +130,7 @@ export default function StatsDashboard() {
                         <Text style={styles.nextMatchLabel}>NEXT MATCH · 20-TEAM LOBBY</Text>
                         <View style={styles.nextMatchRow}>
                           <Text style={styles.nextMatchTitle}>
-                            Round {nextGame.roundNumber} · Match {nextGame.gameNumber}
+                            Match {nextGame.roundNumber} · Game {nextGame.gameNumber}
                           </Text>
                           <Text style={styles.nextMatchTime}>{formatTimeLabel(nextGame.scheduledAt)}</Text>
                         </View>

@@ -97,7 +97,7 @@ export default function RosterLineup() {
             <View style={{ gap: 5 }}>
               <Text style={styles.nextGameLabel}>LINEUP FOR</Text>
               <Text style={styles.nextGameTitle}>
-                Round {data.roundNumber} · Match {data.gameNumber}
+                Match {data.roundNumber} · Game {data.gameNumber}
               </Text>
               <Text style={styles.nextGameMeta}>
                 {data.scheduledAt ? formatWhen(data.scheduledAt) : ''} · 20-team lobby · trios

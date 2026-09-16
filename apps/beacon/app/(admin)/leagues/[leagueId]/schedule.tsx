@@ -63,7 +63,7 @@ export default function ScheduleMatches() {
   }
 
   const missing: string[] = [];
-  if (!round.trim()) missing.push('a round number');
+  if (!round.trim()) missing.push('a match number');
   if (!gameNumber.trim()) missing.push('a game number');
   if (!date.trim()) missing.push('a date');
   const ready = missing.length === 0;
@@ -94,7 +94,7 @@ export default function ScheduleMatches() {
     }
   }
 
-  const title = `Round ${round || '—'} · Match ${gameNumber || '—'}`;
+  const title = `Match ${round || '—'} · Game ${gameNumber || '—'}`;
   const whenText = `${date || 'date not set'} · ${time}`;
   const players = (approvedTeams ?? 0) * 3;
   const published = !!justPublishedId && !editingId;
@@ -203,7 +203,7 @@ export default function ScheduleMatches() {
       }
     >
       <View style={styles.formRow}>
-        <Field label="Round" style={{ width: 110 }}>
+        <Field label="Match" style={{ width: 110 }}>
           <TextInput value={round} onChangeText={(v) => { setRound(v); setJustPublishedId(null); }} placeholder="10" placeholderTextColor={color.fillPlaceholder} keyboardType="number-pad" style={[styles.input, tabularNums]} />
         </Field>
         <Field label="Game" style={{ flex: 1 }}>
@@ -276,7 +276,7 @@ export default function ScheduleMatches() {
               return (
                 <View key={g.id} style={[styles.tableRow, live && { backgroundColor: color.panel }]}>
                   <View style={{ width: 150, gap: 3 }}>
-                    <Text style={[styles.rowTitle, { color: fg }]}>Round {g.roundNumber} · Match {g.gameNumber}</Text>
+                    <Text style={[styles.rowTitle, { color: fg }]}>Match {g.roundNumber} · Game {g.gameNumber}</Text>
                     <Text style={[styles.rowState, { color: cancelled ? color.textMuted : live ? color.ember : color.textMuted }]}>{stateLabel}</Text>
                   </View>
                   <Text style={[styles.rowWhen, { color: fg }, tabularNums]}>{formatGameWhen(g.scheduledAt)}</Text>

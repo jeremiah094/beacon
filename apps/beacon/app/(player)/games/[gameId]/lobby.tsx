@@ -56,7 +56,7 @@ export default function MatchLobby() {
           </Pressable>
           <View style={{ flex: 1, gap: 3, minWidth: 0 }}>
             <Text style={styles.contextTitle}>
-              Round {data.roundNumber} · Match {data.gameNumber}
+              Match {data.roundNumber} · Game {data.gameNumber}
             </Text>
             <Text style={[styles.contextMeta, tabularNums]}>
               {data.teamName}
@@ -83,7 +83,7 @@ export default function MatchLobby() {
             <View style={styles.codeHeaderRow}>
               <Text style={styles.codeLabel}>LOBBY CODE</Text>
               <Text style={styles.codeSubLabel}>
-                {data.leagueName ?? ''} · Match {data.gameNumber}
+                {data.leagueName ?? ''} · Game {data.gameNumber}
               </Text>
             </View>
 
