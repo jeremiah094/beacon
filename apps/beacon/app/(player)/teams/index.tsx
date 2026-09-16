@@ -75,6 +75,7 @@ export default function MyTeams() {
               team={t}
               isActive={t.id === activeTeamId}
               onSelect={() => setActiveTeam(t.id)}
+              onManage={() => router.push({ pathname: '/(player)/teams/[teamId]/lineup', params: { teamId: t.id } } as any)}
             />
           ))
         )}
@@ -171,9 +172,19 @@ export default function MyTeams() {
   );
 }
 
-function TeamCard({ team, isActive, onSelect }: { team: MyTeam; isActive: boolean; onSelect: () => void }) {
+function TeamCard({
+  team,
+  isActive,
+  onSelect,
+  onManage,
+}: {
+  team: MyTeam;
+  isActive: boolean;
+  onSelect: () => void;
+  onManage: () => void;
+}) {
   return (
-    <Pressable onPress={isActive ? undefined : onSelect}>
+    <Pressable onPress={isActive ? onManage : onSelect}>
       <CornerCut
         cut={18}
         fill={isActive ? color.panel : color.base}
