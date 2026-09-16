@@ -115,7 +115,7 @@ export default function MonitorLiveMatch() {
   }
 
   async function saveCode() {
-    const code = codeInput.trim().toUpperCase();
+    const code = codeInput.trim();
     if (!code) return;
     await setLobbyCode.mutateAsync(code);
     setEditingCode(false);
@@ -199,7 +199,7 @@ export default function MonitorLiveMatch() {
                   onChangeText={setCodeInput}
                   placeholder="e.g. XKQ4R"
                   placeholderTextColor={color.fillPlaceholder}
-                  autoCapitalize="characters"
+                  autoCapitalize="none"
                   autoFocus
                   style={styles.codeInput}
                 />

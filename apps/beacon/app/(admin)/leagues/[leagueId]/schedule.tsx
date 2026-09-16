@@ -103,7 +103,7 @@ export default function ScheduleMatches() {
   }
 
   async function saveCode(gameId: string) {
-    const code = codeInput.trim().toUpperCase();
+    const code = codeInput.trim();
     if (!code) return;
     await setLobbyCode.mutateAsync({ gameId, lobbyCode: code });
     setEditingCodeId(null);
@@ -314,7 +314,7 @@ export default function ScheduleMatches() {
                           onChangeText={setCodeInput}
                           placeholder="e.g. XKQ4R"
                           placeholderTextColor={color.fillPlaceholder}
-                          autoCapitalize="characters"
+                          autoCapitalize="none"
                           autoFocus
                           style={styles.codeInput}
                         />
