@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { BottomNav } from '../../components/BottomNav';
 import { CornerCut } from '../../components/CornerCut';
@@ -22,6 +22,15 @@ export default function StatsDashboard() {
   const [syncedAgo, setSyncedAgo] = useState<string | null>(null);
 
   const lockLabel = useCountdownLabel(data?.league?.nextGame?.lockAt ?? null);
+
+  // Re-sync every time this screen comes into view — cold launch, tab
+  // switch back, or returning from another screen — not just on the
+  // 60s staleTime cadence.
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
 
   if (isLoading || !data) {
     return (
@@ -53,7 +62,12 @@ export default function StatsDashboard() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={handleRefresh} tintColor={color.textMuted} titleColor={color.textMuted} />
+        }
+      >
         <View style={styles.identityRow}>
           <CornerCut cut={12} fill="none" strokeColor={color.hairlineStrong} style={styles.avatar}>
             <View style={styles.avatarInner}>

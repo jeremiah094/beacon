@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
+import { AppState, type AppStateStatus, Platform } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as SplashScreen from 'expo-splash-screen';
 import {
   useFonts as useRajdhani,
@@ -28,6 +29,15 @@ const queryClient = new QueryClient({
   },
 });
 
+// React Query's refetch-on-focus only fires on native once it's told the
+// app actually came back to the foreground — on web the browser's own
+// window "focus" event already does this for free.
+function onAppStateChange(status: AppStateStatus) {
+  if (Platform.OS !== 'web') {
+    focusManager.setFocused(status === 'active');
+  }
+}
+
 export default function RootLayout() {
   const [rajdhaniLoaded] = useRajdhani({
     Rajdhani_500Medium,
@@ -47,6 +57,11 @@ export default function RootLayout() {
       SplashScreen.hideAsync().catch(() => {});
     }
   }, [fontsReady]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', onAppStateChange);
+    return () => subscription.remove();
+  }, []);
 
   if (!fontsReady) {
     return null;
