@@ -1,0 +1,27 @@
+name: Deploy production web
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: "Deploy message"
+        required: false
+
+defaults:
+  tools:
+    node: 20.19.4
+
+jobs:
+  deploy_web:
+    name: Deploy web
+    defaults:
+      run:
+        working_directory: ./apps/beacon
+    steps:
+      - uses: eas/checkout
+      - uses: eas/use_npm_token
+      - uses: eas/install_node_modules
+      - name: Export web build
+        run: npx expo export -p web
+      - name: Deploy to production alias
+        run: npx eas-cli deploy --prod --non-interactive
