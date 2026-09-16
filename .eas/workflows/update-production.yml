@@ -7,6 +7,10 @@ on:
         description: "Update message"
         required: false
 
+defaults:
+  tools:
+    node: 20.19.4
+
 jobs:
   publish_update:
     name: Publish update
