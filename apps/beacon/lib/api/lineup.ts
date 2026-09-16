@@ -38,14 +38,18 @@ function personMeta(row: { rank_name: string | null; kd: number | null; apex_ver
 async function fetchTeamLineup(teamId: string): Promise<TeamLineupData> {
   const { data: team } = await supabase.from('teams').select('id, name').eq('id', teamId).single();
 
-  const { data: members } = await supabase
+  const { data: members, error: membersError } = await supabase
     .from('team_members')
-    .select('profile_id, role, profiles(gamertag, apex_verified_at), player_stats(rank_name, kd)')
+    // player_stats has no direct FK to team_members (both reference
+    // profiles independently), so PostgREST can only embed it nested
+    // under profiles, not as a sibling — a sibling embed 400s.
+    .select('profile_id, role, profiles(gamertag, apex_verified_at, player_stats(rank_name, kd))')
     .eq('team_id', teamId);
+  if (membersError) throw membersError;
 
   const roster: RosterPlayer[] = (members ?? []).map((m) => {
     const profile = m.profiles as any;
-    const stats = m.player_stats as any;
+    const stats = profile?.player_stats as any;
     const verified = !!profile?.apex_verified_at;
     return {
       profileId: m.profile_id,
