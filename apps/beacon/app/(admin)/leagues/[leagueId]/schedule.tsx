@@ -17,6 +17,7 @@ import {
   useAdminGames,
   useApprovedTeamCount,
   useCancelGame,
+  useOpenLobby,
   useSaveGame,
   useSetGameLobbyCode,
 } from '../../../../lib/api/adminSchedule';
@@ -40,6 +41,7 @@ export default function ScheduleMatches() {
   const saveGame = useSaveGame(leagueId);
   const cancelGame = useCancelGame(leagueId);
   const setLobbyCode = useSetGameLobbyCode(leagueId);
+  const openLobby = useOpenLobby(leagueId);
   const { width } = useWindowDimensions();
   const isMobile = width < 860;
 
@@ -286,20 +288,29 @@ export default function ScheduleMatches() {
           </View>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }}>
-          <View style={[styles.table, { minWidth: 820 }]}>
+          <View style={[styles.table, { minWidth: 940 }]}>
             <View style={styles.tableHeaderRow}>
               <Text style={[styles.tableHeaderCell, { width: 150 }]}>GAME</Text>
               <Text style={[styles.tableHeaderCell, { width: 150 }]}>LOBBY CODE</Text>
               <Text style={[styles.tableHeaderCell, { width: 130 }]}>WHEN</Text>
               <Text style={[styles.tableHeaderCell, { flex: 1 }]}>MAP</Text>
-              <Text style={[styles.tableHeaderCell, { width: 176, textAlign: 'right' }]}>ACTIONS</Text>
+              <Text style={[styles.tableHeaderCell, { width: 296, textAlign: 'right' }]}>ACTIONS</Text>
             </View>
             {(games ?? []).map((g) => {
               const cancelled = g.status === 'cancelled';
               const live = g.status === 'in_progress' || g.status === 'lobby_open';
+              const completed = g.status === 'completed';
               const editable = g.status === 'scheduled';
               const fg = cancelled ? color.textMuted : color.textPrimary;
-              const stateLabel = cancelled ? 'CANCELLED' : g.status === 'in_progress' ? 'LIVE' : g.status === 'lobby_open' ? 'LOBBY OPEN' : 'SCHEDULED';
+              const stateLabel = cancelled
+                ? 'CANCELLED'
+                : g.status === 'in_progress'
+                  ? 'LIVE'
+                  : g.status === 'lobby_open'
+                    ? 'LOBBY OPEN'
+                    : completed
+                      ? 'COMPLETED'
+                      : 'SCHEDULED';
               return (
                 <View key={g.id} style={[styles.tableRow, live && { backgroundColor: color.panel }]}>
                   <View style={{ width: 150, gap: 3 }}>
@@ -340,14 +351,22 @@ export default function ScheduleMatches() {
                   </View>
                   <Text style={[styles.rowWhen, { color: fg }, tabularNums]}>{formatGameWhen(g.scheduledAt)}</Text>
                   <Text style={styles.rowMap}>{g.map ?? '—'}</Text>
-                  <View style={{ width: 176, flexDirection: 'row', gap: 8, justifyContent: 'flex-end' }}>
+                  <View style={{ width: 296, flexDirection: 'row', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                     {live && (
                       <Pressable onPress={() => router.push(`/(admin)/games/${g.id}/monitor` as any)}>
                         <AdminChip label="MONITOR" tone="ember" dotShape="circle" />
                       </Pressable>
                     )}
+                    {completed && (
+                      <Pressable onPress={() => router.push(`/(admin)/games/${g.id}/verify` as any)}>
+                        <AdminChip label="RESULTS" tone="verified" dotShape="diamond" />
+                      </Pressable>
+                    )}
                     {editable && (
                       <>
+                        <Pressable onPress={() => openLobby.mutateAsync({ gameId: g.id, currentLobbyCode: g.lobbyCode })} disabled={openLobby.isPending}>
+                          <AdminChip label="OPEN LOBBY" tone="verified" dotShape="circle" />
+                        </Pressable>
                         <Pressable onPress={() => startEdit(g)}>
                           <View style={styles.editBtn}>
                             <Text style={styles.editBtnLabel}>Edit</Text>

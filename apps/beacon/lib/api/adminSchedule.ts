@@ -112,6 +112,34 @@ export function useSetGameLobbyCode(leagueId: string | undefined) {
   });
 }
 
+function randomLobbyCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let out = '';
+  for (let i = 0; i < 5; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
+/** The only thing that ever moves a game out of "scheduled" was the
+ * "Advance to lobby open" button on the live monitor screen — but that
+ * screen is only linked to from here once a game is already live, which
+ * it never was yet. Give the schedule table its own way to open the
+ * lobby directly, so a freshly published game isn't a dead end. */
+export function useOpenLobby(leagueId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ gameId, currentLobbyCode }: { gameId: string; currentLobbyCode: string | null }) => {
+      const payload: { status: string; lobby_code?: string } = { status: 'lobby_open' };
+      if (!currentLobbyCode) payload.lobby_code = randomLobbyCode();
+      const { error } = await supabase.from('games').update(payload).eq('id', gameId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminGames', leagueId] });
+      queryClient.invalidateQueries({ queryKey: ['adminNavCounts'] });
+    },
+  });
+}
+
 export function useCancelGame(leagueId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
