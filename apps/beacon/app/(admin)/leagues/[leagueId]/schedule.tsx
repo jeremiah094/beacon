@@ -11,7 +11,15 @@ import { Diamond } from '../../../../components/Diamond';
 import { Spinner } from '../../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../../theme/tokens';
 import { useAdminLeague } from '../../../../lib/api/adminLeagues';
-import { AdminGame, GameFormData, useAdminGames, useApprovedTeamCount, useCancelGame, useSaveGame } from '../../../../lib/api/adminSchedule';
+import {
+  AdminGame,
+  GameFormData,
+  useAdminGames,
+  useApprovedTeamCount,
+  useCancelGame,
+  useSaveGame,
+  useSetGameLobbyCode,
+} from '../../../../lib/api/adminSchedule';
 
 // Reference: Beacon 13 Schedule Matches.dc.html. The source lets the admin
 // hand-pick which of 20 approved teams share a given lobby (a per-game
@@ -31,6 +39,7 @@ export default function ScheduleMatches() {
   const { data: approvedTeams } = useApprovedTeamCount(leagueId);
   const saveGame = useSaveGame(leagueId);
   const cancelGame = useCancelGame(leagueId);
+  const setLobbyCode = useSetGameLobbyCode(leagueId);
   const { width } = useWindowDimensions();
   const isMobile = width < 860;
 
@@ -42,6 +51,8 @@ export default function ScheduleMatches() {
   const [map, setMap] = useState('Storm Point');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [justPublishedId, setJustPublishedId] = useState<string | null>(null);
+  const [editingCodeId, setEditingCodeId] = useState<string | null>(null);
+  const [codeInput, setCodeInput] = useState('');
 
   const active = (games ?? []).filter((g) => g.status !== 'cancelled');
 
@@ -84,6 +95,18 @@ export default function ScheduleMatches() {
     } else {
       setJustPublishedId(id);
     }
+  }
+
+  function startEditCode(g: AdminGame) {
+    setEditingCodeId(g.id);
+    setCodeInput(g.lobbyCode ?? '');
+  }
+
+  async function saveCode(gameId: string) {
+    const code = codeInput.trim().toUpperCase();
+    if (!code) return;
+    await setLobbyCode.mutateAsync({ gameId, lobbyCode: code });
+    setEditingCodeId(null);
   }
 
   async function confirmCancel(gameId: string) {
@@ -263,10 +286,11 @@ export default function ScheduleMatches() {
           </View>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }}>
-          <View style={[styles.table, { minWidth: 640 }]}>
+          <View style={[styles.table, { minWidth: 820 }]}>
             <View style={styles.tableHeaderRow}>
               <Text style={[styles.tableHeaderCell, { width: 150 }]}>GAME</Text>
-              <Text style={[styles.tableHeaderCell, { width: 150 }]}>WHEN</Text>
+              <Text style={[styles.tableHeaderCell, { width: 150 }]}>LOBBY CODE</Text>
+              <Text style={[styles.tableHeaderCell, { width: 130 }]}>WHEN</Text>
               <Text style={[styles.tableHeaderCell, { flex: 1 }]}>MAP</Text>
               <Text style={[styles.tableHeaderCell, { width: 176, textAlign: 'right' }]}>ACTIONS</Text>
             </View>
@@ -281,6 +305,38 @@ export default function ScheduleMatches() {
                   <View style={{ width: 150, gap: 3 }}>
                     <Text style={[styles.rowTitle, { color: fg }]}>Match {g.roundNumber} · Game {g.gameNumber}</Text>
                     <Text style={[styles.rowState, { color: cancelled ? color.textMuted : live ? color.ember : color.textMuted }]}>{stateLabel}</Text>
+                  </View>
+                  <View style={{ width: 150 }}>
+                    {editingCodeId === g.id ? (
+                      <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                        <TextInput
+                          value={codeInput}
+                          onChangeText={setCodeInput}
+                          placeholder="e.g. XKQ4R"
+                          placeholderTextColor={color.fillPlaceholder}
+                          autoCapitalize="characters"
+                          autoFocus
+                          style={styles.codeInput}
+                        />
+                        <Pressable onPress={() => saveCode(g.id)} disabled={setLobbyCode.isPending || !codeInput.trim()}>
+                          <Text style={styles.codeSaveLabel}>Save</Text>
+                        </Pressable>
+                        <Pressable onPress={() => setEditingCodeId(null)}>
+                          <Text style={styles.codeCancelLabel}>✕</Text>
+                        </Pressable>
+                      </View>
+                    ) : cancelled ? (
+                      <Text style={[styles.rowCode, { color: color.textMuted }]}>{g.lobbyCode ?? '—'}</Text>
+                    ) : (
+                      <Pressable onPress={() => startEditCode(g)}>
+                        {({ hovered }: any) => (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={[styles.rowCode, { color: g.lobbyCode ? fg : color.textMuted }]}>{g.lobbyCode ?? 'Not set'}</Text>
+                            <Text style={[styles.codeEditHint, hovered && { color: color.textPrimary }]}>{g.lobbyCode ? 'Edit' : 'Set'}</Text>
+                          </View>
+                        )}
+                      </Pressable>
+                    )}
                   </View>
                   <Text style={[styles.rowWhen, { color: fg }, tabularNums]}>{formatGameWhen(g.scheduledAt)}</Text>
                   <Text style={styles.rowMap}>{g.map ?? '—'}</Text>
@@ -362,7 +418,22 @@ const styles = StyleSheet.create({
   tableRow: { flexDirection: 'row', gap: 14, alignItems: 'center', padding: 13, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(242,241,236,0.08)' },
   rowTitle: { fontFamily: fontFamily.rajdhaniSemiBold, fontSize: 14, letterSpacing: 0.02 * 14 },
   rowState: { fontFamily: fontFamily.interRegular, fontSize: 9, letterSpacing: 0.1 * 9 },
-  rowWhen: { width: 150, fontFamily: fontFamily.interMedium, fontSize: 12 },
+  rowWhen: { width: 130, fontFamily: fontFamily.interMedium, fontSize: 12 },
+  rowCode: { fontFamily: fontFamily.rajdhaniSemiBold, fontSize: 14, letterSpacing: 0.03 * 14 },
+  codeEditHint: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.06 * 10, color: color.textMuted },
+  codeInput: {
+    height: 32,
+    width: 84,
+    backgroundColor: color.base,
+    borderWidth: 1,
+    borderColor: color.hairlineInput,
+    color: color.textPrimary,
+    fontFamily: fontFamily.rajdhaniSemiBold,
+    fontSize: 13,
+    paddingHorizontal: 8,
+  },
+  codeSaveLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: color.textPrimary },
+  codeCancelLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.textMuted },
   rowMap: { flex: 1, fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted },
   editBtn: { paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1, borderColor: color.hairlineStrong },
   editBtnLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: color.textPrimary },

@@ -8,12 +8,13 @@ export type AdminGame = {
   scheduledAt: string;
   map: string | null;
   status: string;
+  lobbyCode: string | null;
 };
 
 async function fetchAdminGames(leagueId: string): Promise<AdminGame[]> {
   const { data, error } = await supabase
     .from('games')
-    .select('id, round_number, game_number, scheduled_at, map, status')
+    .select('id, round_number, game_number, scheduled_at, map, status, lobby_code')
     .eq('league_id', leagueId)
     .in('status', ['scheduled', 'lobby_open', 'in_progress', 'cancelled'])
     .order('scheduled_at', { ascending: true });
@@ -25,6 +26,7 @@ async function fetchAdminGames(leagueId: string): Promise<AdminGame[]> {
     scheduledAt: g.scheduled_at,
     map: g.map,
     status: g.status,
+    lobbyCode: g.lobby_code,
   }));
 }
 
@@ -90,6 +92,22 @@ export function useSaveGame(leagueId: string | undefined) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminGames', leagueId] });
       queryClient.invalidateQueries({ queryKey: ['adminNavCounts'] });
+    },
+  });
+}
+
+/** Lets an admin set or change a game's real private-match code straight
+ * from the schedule list — not just from the live monitor screen, which
+ * is unreachable until the game is already lobby_open/in_progress. */
+export function useSetGameLobbyCode(leagueId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ gameId, lobbyCode }: { gameId: string; lobbyCode: string }) => {
+      const { error } = await supabase.from('games').update({ lobby_code: lobbyCode }).eq('id', gameId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminGames', leagueId] });
     },
   });
 }
