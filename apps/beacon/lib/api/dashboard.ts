@@ -6,6 +6,7 @@ export type DashboardStats = {
   rankScore: number | null;
   kd: number | null;
   wins: number | null;
+  kills: number | null;
   mostPlayedLegend: string | null;
   fetchedAt: string | null;
 };
@@ -51,7 +52,7 @@ async function fetchDashboard(userId: string): Promise<DashboardData> {
 
   const { data: statsRow } = await supabase
     .from('player_stats')
-    .select('rank_name, rank_score, kd, wins, most_played_legend, fetched_at')
+    .select('rank_name, rank_score, kd, wins, kills, most_played_legend, fetched_at')
     .eq('profile_id', userId)
     .maybeSingle();
 
@@ -61,6 +62,7 @@ async function fetchDashboard(userId: string): Promise<DashboardData> {
         rankScore: statsRow.rank_score,
         kd: statsRow.kd,
         wins: statsRow.wins,
+        kills: statsRow.kills,
         mostPlayedLegend: statsRow.most_played_legend,
         fetchedAt: statsRow.fetched_at,
       }

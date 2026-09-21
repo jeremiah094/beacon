@@ -13,9 +13,14 @@
 // below (`global.rank`, `global.level`, `legends.selected`) come from the
 // community Python/Go wrappers' field usage; `raw` is always stored
 // alongside the parsed fields so a bad guess is correctable without
-// re-calling the API. K/D isn't in the basic bridge response, so it's left
-// null (rendered as "—", never a fabricated 0) until a stats-tracker field
-// is confirmed against a real response.
+// re-calling the API.
+//
+// `raw.total` is the player's self-chosen in-game "Stat Trackers" (they
+// pin 2-3 of Kills/Wins/KD/Damage/Revives/etc.), so there's no fixed key
+// per account — every entry is matched by its human-readable `name` field
+// instead (see findTrackerValue below). A value of -1 is Respawn's "not
+// computed yet" sentinel and is treated as unavailable, never rendered as
+// a fabricated 0.
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 type Platform = "PC" | "X1" | "PS4";
@@ -46,6 +51,23 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+}
+
+function findTrackerValue(total: Record<string, unknown> | undefined, namePattern: RegExp): number | null {
+  if (!total || typeof total !== "object") return null;
+  for (const entry of Object.values(total)) {
+    if (
+      entry &&
+      typeof entry === "object" &&
+      typeof (entry as any).name === "string" &&
+      namePattern.test((entry as any).name)
+    ) {
+      const rawValue = (entry as any).value;
+      const v = typeof rawValue === "string" ? Number(rawValue) : rawValue;
+      if (typeof v === "number" && Number.isFinite(v) && v >= 0) return v;
+    }
+  }
+  return null;
 }
 
 Deno.serve(async (req: Request) => {
@@ -140,9 +162,9 @@ Deno.serve(async (req: Request) => {
   const level: number | null = typeof global.level === "number" ? global.level : null;
   const mostPlayedLegend: string | null =
     raw?.legends?.selected?.LegendName ?? raw?.legends?.selected?.legendName ?? null;
-  const wins: number | null =
-    typeof raw?.total?.career_wins?.value === "number" ? raw.total.career_wins.value : null;
-  const kd: number | null = null; // see field-mapping note at top of file
+  const wins: number | null = findTrackerValue(raw?.total, /wins?/i);
+  const kd: number | null = findTrackerValue(raw?.total, /k\/?d/i);
+  const kills: number | null = findTrackerValue(raw?.total, /kills?/i);
 
   const fetchedAt = new Date().toISOString();
 
@@ -163,6 +185,7 @@ Deno.serve(async (req: Request) => {
     rank_score: rankScore,
     kd,
     wins,
+    kills,
     most_played_legend: mostPlayedLegend,
     level,
     raw,
@@ -181,6 +204,7 @@ Deno.serve(async (req: Request) => {
       rankScore,
       kd,
       wins,
+      kills,
       mostPlayedLegend,
       level,
       fetchedAt,

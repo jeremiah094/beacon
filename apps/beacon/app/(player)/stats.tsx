@@ -46,8 +46,22 @@ export default function StatsDashboard() {
   const initials = (data.gamertag ?? '??').slice(0, 2).toUpperCase();
   const kd = data.stats?.kd;
   const wins = data.stats?.wins;
+  const kills = data.stats?.kills;
   const rank = data.stats?.rankName;
   const legend = data.stats?.mostPlayedLegend;
+
+  // Which trackers a player has pinned in-game varies per account, so fill
+  // the two flexible tiles with whichever of K/D / Wins / Kills actually
+  // has real data, preferring real values over "—" placeholders.
+  const flexCandidates = [
+    { label: 'K/D RATIO', value: kd != null ? kd.toFixed(2) : '—' },
+    { label: 'WINS', value: wins != null ? String(wins) : '—' },
+    { label: 'KILLS', value: kills != null ? String(kills) : '—' },
+  ];
+  const flexTiles = [
+    ...flexCandidates.filter((t) => t.value !== '—'),
+    ...flexCandidates.filter((t) => t.value === '—'),
+  ].slice(0, 2);
 
   async function handleRefresh() {
     await refetch();
@@ -109,8 +123,9 @@ export default function StatsDashboard() {
 
         <View style={styles.statGridWrap}>
           <StatTile label="RANK" value={rank ?? '—'} sub={data.stats?.rankScore != null ? `${data.stats.rankScore.toLocaleString()} RP` : undefined} big={27} />
-          <StatTile label="K/D RATIO" value={kd != null ? kd.toFixed(2) : '—'} big={40} />
-          <StatTile label="WINS" value={wins != null ? String(wins) : '—'} big={40} />
+          {flexTiles.map((t) => (
+            <StatTile key={t.label} label={t.label} value={t.value} big={40} />
+          ))}
           <StatTile label="MOST PLAYED" value={legend ?? '—'} big={30} />
         </View>
 
