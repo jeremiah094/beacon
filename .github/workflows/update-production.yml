@@ -1,0 +1,26 @@
+name: Publish production update (OTA)
+
+on:
+  workflow_dispatch:
+    inputs:
+      message:
+        description: "Update message"
+        required: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - name: Publish update
+        working-directory: apps/beacon
+        run: npx eas-cli update --channel production --non-interactive --message "${{ github.event.inputs.message || 'Manual update' }}"
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
