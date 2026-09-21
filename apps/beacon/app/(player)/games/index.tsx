@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -9,6 +9,7 @@ import { Diamond } from '../../../components/Diamond';
 import { Spinner } from '../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../theme/tokens';
 import { useCountdownLabel } from '../../../lib/hooks/useCountdown';
+import { getGamePhase } from '../../../lib/time';
 import { useSession } from '../../../lib/hooks/useSession';
 import { useActiveTeam } from '../../../lib/hooks/useActiveTeam';
 import { useMyTeams } from '../../../lib/api/teams';
@@ -25,6 +26,14 @@ export default function UpcomingGames() {
 
   const activeTeam = myTeams?.find((t) => t.id === activeTeamId);
 
+  // Ticks the live/next/completed bucketing below — doesn't need
+  // per-second precision, each card's own countdown handles that.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 20_000);
+    return () => clearInterval(id);
+  }, []);
+
   if (isLoading || !data) {
     return (
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -36,8 +45,13 @@ export default function UpcomingGames() {
     );
   }
 
-  const [nextGame, ...laterGames] = data.games;
-  const mutedCount = data.games.filter((g) => g.muted).length;
+  const phased = data.games.map((g) => ({ ...g, phase: getGamePhase(g.scheduledAt, g.status, now) }));
+  const liveGames = phased.filter((g) => g.phase === 'live');
+  const upcoming = phased.filter((g) => g.phase === 'upcoming'); // already asc-sorted from the query
+  const completedGames = phased.filter((g) => g.phase === 'completed').slice().reverse(); // most recent first
+  const [nextGame, ...laterGames] = upcoming;
+  const mutedCount = [...liveGames, ...upcoming].filter((g) => g.muted).length;
+  const fixturesLeft = liveGames.length + upcoming.length;
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -50,24 +64,37 @@ export default function UpcomingGames() {
         </View>
         <Text style={styles.subtitle}>
           {data.teamName}
-          {data.leagueName ? ` · ${data.leagueName}` : ''} · {data.games.length} fixture{data.games.length === 1 ? '' : 's'} left
+          {data.leagueName ? ` · ${data.leagueName}` : ''} · {fixturesLeft} fixture{fixturesLeft === 1 ? '' : 's'} left
         </Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.list}>
+        {liveGames.map((g) => (
+          <LiveGameCard key={g.id} game={g} />
+        ))}
+
         {nextGame ? (
           <NextGameCard game={nextGame} onToggleMute={() => toggleMute.mutate({ gameId: nextGame.id, muted: !nextGame.muted })} teamId={activeTeamId!} />
-        ) : (
+        ) : liveGames.length === 0 && completedGames.length === 0 ? (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyText}>No games scheduled yet.</Text>
           </View>
-        )}
+        ) : null}
 
         {laterGames.length > 0 && (
           <>
             <Text style={styles.sectionLabel}>Later this season</Text>
             {laterGames.map((g) => (
               <LaterGameRow key={g.id} game={g} onToggleMute={() => toggleMute.mutate({ gameId: g.id, muted: !g.muted })} />
+            ))}
+          </>
+        )}
+
+        {completedGames.length > 0 && (
+          <>
+            <Text style={styles.sectionLabel}>Recently completed</Text>
+            {completedGames.map((g) => (
+              <CompletedGameRow key={g.id} game={g} />
             ))}
           </>
         )}
@@ -213,6 +240,108 @@ function NextGameCard({ game, onToggleMute, teamId }: { game: UpcomingGame; onTo
   );
 }
 
+function LiveGameCard({ game }: { game: UpcomingGame }) {
+  const [copied, setCopied] = useState(false);
+
+  async function handleCopyCode() {
+    if (!game.lobbyCode) return;
+    await ClipboardAPI.setStringAsync(game.lobbyCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 4000);
+  }
+
+  return (
+    <CornerCut cut={20} fill={color.panel} strokeColor={color.emberBorderSoft} style={{ width: '100%' }}>
+      <View style={styles.nextCardContent}>
+        <View style={styles.nextCardTopRow}>
+          <View style={{ gap: 6 }}>
+            <View style={styles.nextChip}>
+              <View style={styles.nextChipDot} />
+              <Text style={styles.nextChipLabel}>LIVE · IN PROGRESS</Text>
+            </View>
+            <Text style={styles.nextTitle}>
+              Match {game.roundNumber} · Game {game.gameNumber}
+            </Text>
+          </View>
+        </View>
+
+        {game.lobbyCode ? (
+          <Pressable onPress={handleCopyCode}>
+            {({ pressed, hovered }: any) => (
+              <View
+                style={[
+                  styles.lobbyCodeBox,
+                  copied
+                    ? { backgroundColor: color.verifiedTint, borderColor: color.verifiedTintBorder }
+                    : { backgroundColor: pressed ? color.emberActive : hovered ? color.emberHover : color.ember, borderColor: color.ember },
+                ]}
+              >
+                <View style={{ flex: 1, gap: 2, minWidth: 0 }}>
+                  <Text style={[styles.lobbyCodeLabel, { color: copied ? color.verified : color.base }]}>
+                    {copied ? 'COPIED' : 'LOBBY CODE · TAP TO COPY'}
+                  </Text>
+                  <Text style={[styles.lobbyCodeValue, { color: copied ? color.verified : color.base }]} numberOfLines={1}>
+                    {game.lobbyCode}
+                  </Text>
+                </View>
+                {copied && <Diamond size={13} color={color.verified} />}
+              </View>
+            )}
+          </Pressable>
+        ) : (
+          <View style={styles.lobbyCodePendingBox}>
+            <Text style={styles.lobbyCodePendingText}>No lobby code was set for this game.</Text>
+          </View>
+        )}
+
+        <View style={styles.factsGrid}>
+          <View style={styles.factTile}>
+            <Text style={[styles.factValue, tabularNums]}>{formatClock(game.scheduledAt)}</Text>
+            <Text style={styles.factLabel}>STARTED</Text>
+          </View>
+          <View style={styles.factTile}>
+            <Text style={styles.factValue}>{game.map ?? '—'}</Text>
+            <Text style={styles.factLabel}>MAP</Text>
+          </View>
+          <View style={styles.factTile}>
+            <Text style={[styles.factValue, tabularNums]}>20 teams</Text>
+            <Text style={styles.factLabel}>ONE LOBBY</Text>
+          </View>
+        </View>
+
+        <Text style={styles.lockNote}>Results are published once the admin verifies placement and kills.</Text>
+      </View>
+    </CornerCut>
+  );
+}
+
+function CompletedGameRow({ game }: { game: UpcomingGame }) {
+  return (
+    <Pressable onPress={() => router.push({ pathname: '/(player)/games/[gameId]/results', params: { gameId: game.id } } as any)}>
+      {({ pressed, hovered }: any) => (
+        <View style={[styles.laterRow, (pressed || hovered) && { borderColor: color.hairlineStrong }]}>
+          <View style={styles.laterTopRow}>
+            <View style={{ gap: 5, flex: 1, minWidth: 0 }}>
+              <Text style={styles.laterTitle}>
+                Match {game.roundNumber} · Game {game.gameNumber}
+              </Text>
+              <Text style={styles.laterWhen}>{formatWhen(game.scheduledAt)}</Text>
+            </View>
+            <View style={styles.completedChip}>
+              <Text style={styles.completedChipLabel}>VIEW RESULTS →</Text>
+            </View>
+          </View>
+          <View style={styles.laterMetaRow}>
+            <Text style={[styles.laterMetaText, tabularNums]}>{game.map ?? '—'}</Text>
+            <View style={styles.laterMetaDivider} />
+            <Text style={[styles.laterMetaText, tabularNums]}>20 teams · one lobby</Text>
+          </View>
+        </View>
+      )}
+    </Pressable>
+  );
+}
+
 function LaterGameRow({ game, onToggleMute }: { game: UpcomingGame; onToggleMute: () => void }) {
   return (
     <View style={styles.laterRow}>
@@ -333,6 +462,8 @@ const styles = StyleSheet.create({
   laterMetaDivider: { width: 1, height: 11, backgroundColor: color.hairlineInput },
   mutedChip: { marginLeft: 'auto', borderWidth: 1, borderColor: color.neutralBorder, paddingVertical: 3, paddingHorizontal: 6 },
   mutedChipLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.12 * 9, color: color.textMuted },
+  completedChip: { borderWidth: 1, borderColor: color.hairlineStrong, paddingVertical: 4, paddingHorizontal: 8 },
+  completedChipLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.1 * 9, color: color.textPrimary },
   bell: { borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   bellDome: { width: 13, height: 9, borderWidth: 1.5, borderBottomWidth: 0, borderTopLeftRadius: 7, borderTopRightRadius: 7 },
   bellBase: { width: 17, height: 1.5 },

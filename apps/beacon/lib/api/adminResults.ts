@@ -1,21 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 
-// Mirrors placement_points() in the database (20260914113349) so the
-// per-row breakdown/total preview matches what standings will compute —
-// this is a read-only preview, publish always writes raw placement/kills
-// and lets the view do the real scoring.
-export function placementPoints(placement: number): number {
-  if (placement === 1) return 12;
-  if (placement === 2) return 9;
-  if (placement === 3) return 7;
-  if (placement === 4) return 5;
-  if (placement === 5) return 4;
-  if (placement >= 6 && placement <= 7) return 3;
-  if (placement >= 8 && placement <= 10) return 2;
-  if (placement >= 11 && placement <= 15) return 1;
-  return 0;
-}
+export { placementPoints } from '../scoring';
 
 export type ResultRow = {
   teamId: string;

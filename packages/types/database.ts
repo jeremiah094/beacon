@@ -1,5 +1,4 @@
 // Generated via mcp__Supabase__generate_typescript_types — do not hand-edit.
-// Regenerate after any schema migration (project: beacon / mcjxelzimstpebomjvqk).
 export type Json =
   | string
   | number
@@ -271,6 +270,7 @@ export type Database = {
         Row: {
           fetched_at: string | null
           kd: number | null
+          kills: number | null
           level: number | null
           most_played_legend: string | null
           profile_id: string
@@ -282,6 +282,7 @@ export type Database = {
         Insert: {
           fetched_at?: string | null
           kd?: number | null
+          kills?: number | null
           level?: number | null
           most_played_legend?: string | null
           profile_id: string
@@ -293,6 +294,7 @@ export type Database = {
         Update: {
           fetched_at?: string | null
           kd?: number | null
+          kills?: number | null
           level?: number | null
           most_played_legend?: string | null
           profile_id?: string

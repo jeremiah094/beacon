@@ -30,6 +30,23 @@ export function formatDateTime(iso: string): string {
   return d.toLocaleDateString('en-IE', { day: 'numeric', month: 'short' }) + ' ' + d.toLocaleTimeString('en-IE', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
+export type GamePhase = 'upcoming' | 'live' | 'completed';
+
+/** A game's real-world phase from wall-clock time against its scheduled
+ * start — not the admin-managed `games.status` column, which can lag or
+ * skip stages (e.g. an admin jumps straight from "lobby open" to
+ * publishing results, never touching "in progress"). Live for 30 minutes
+ * after kickoff, then completed — unless results are already published
+ * (status 'completed'), which always counts as completed regardless of
+ * the clock. */
+export function getGamePhase(scheduledAt: string, status: string, now: number = Date.now()): GamePhase {
+  if (status === 'completed') return 'completed';
+  const startMs = new Date(scheduledAt).getTime();
+  if (now < startMs) return 'upcoming';
+  if (now < startMs + 30 * 60_000) return 'live';
+  return 'completed';
+}
+
 /** mm:ss for countdowns — hh:mm:ss once an hour or more remains. */
 export function formatCountdown(msRemaining: number): string {
   const totalSeconds = Math.max(0, Math.floor(msRemaining / 1000));

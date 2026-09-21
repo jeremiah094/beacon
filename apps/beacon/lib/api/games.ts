@@ -10,6 +10,7 @@ export type UpcomingGame = {
   map: string | null;
   muted: boolean;
   lobbyCode: string | null;
+  status: string;
 };
 
 export type UpcomingGamesData = {
@@ -32,11 +33,17 @@ async function fetchUpcomingGames(teamId: string, userId: string): Promise<Upcom
     return { teamName: team?.name ?? 'Team', leagueName: null, games: [] };
   }
 
+  // Includes upcoming, live (by wall-clock time — see lib/time.ts's
+  // getGamePhase), and games completed within the last day — older
+  // results belong on the standings screen, not here.
+  const windowStart = new Date(Date.now() - 24 * 60 * 60_000).toISOString();
+
   const { data: games } = await supabase
     .from('games')
-    .select('id, round_number, game_number, scheduled_at, map, lobby_code')
+    .select('id, round_number, game_number, scheduled_at, map, lobby_code, status')
     .eq('league_id', leagueTeam.league_id)
-    .in('status', ['scheduled', 'lobby_open'])
+    .neq('status', 'cancelled')
+    .gte('scheduled_at', windowStart)
     .order('scheduled_at', { ascending: true });
 
   const gameIds = (games ?? []).map((g) => g.id);
@@ -57,6 +64,7 @@ async function fetchUpcomingGames(teamId: string, userId: string): Promise<Upcom
       map: g.map,
       muted: mutedSet.has(g.id),
       lobbyCode: g.lobby_code,
+      status: g.status,
     })),
   };
 }
