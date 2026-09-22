@@ -162,3 +162,22 @@ export function useReopenResults(gameId: string | undefined) {
     },
   });
 }
+
+/** Removes one team's result row entirely (not just unpublishing it) —
+ * for a row entered against the wrong team, or a team that never actually
+ * played. RLS's `results_write` is `for all using (is_admin())`, which
+ * already covers DELETE. */
+export function useDeleteResult(gameId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (teamId: string) => {
+      const { error } = await supabase.from('results').delete().eq('game_id', gameId as string).eq('team_id', teamId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminResults', gameId] });
+      queryClient.invalidateQueries({ queryKey: ['standings'] });
+      queryClient.invalidateQueries({ queryKey: ['adminNavCounts'] });
+    },
+  });
+}

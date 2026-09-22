@@ -10,7 +10,8 @@ import { Diamond } from '../../../../components/Diamond';
 import { Spinner } from '../../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../../theme/tokens';
 import { useSession } from '../../../../lib/hooks/useSession';
-import { placementPoints, useReopenResults, usePublishResults, useResultsGame } from '../../../../lib/api/adminResults';
+import { placementPoints, useDeleteResult, useReopenResults, usePublishResults, useResultsGame } from '../../../../lib/api/adminResults';
+import { PasswordConfirmPanel } from '../../../../components/admin/PasswordConfirmPanel';
 
 // Reference: Beacon 15 Verify Results.dc.html. The source pre-fills every
 // row from an "EA read" and flips a row to admin-entered only once
@@ -26,12 +27,14 @@ export default function VerifyResults() {
   const { data: game, isLoading } = useResultsGame(gameId);
   const publish = usePublishResults(gameId);
   const reopen = useReopenResults(gameId);
+  const deleteResult = useDeleteResult(gameId);
 
   const [placements, setPlacements] = useState<Record<string, string>>({});
   const [kills, setKills] = useState<Record<string, string>>({});
   const [loaded, setLoaded] = useState(false);
   const [onlyIssues, setOnlyIssues] = useState(false);
   const [justPublished, setJustPublished] = useState(false);
+  const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null);
 
   useEffect(() => {
     if (game && !loaded) {
@@ -249,6 +252,11 @@ export default function VerifyResults() {
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 9, minWidth: 0 }}>
               <Text style={styles.rowName} numberOfLines={1}>{r.teamName}</Text>
               <AdminChip label={r.missing ? 'MISSING' : 'ADMIN'} tone={r.missing ? 'ember' : 'neutral'} dotShape={r.missing ? 'circle' : 'diamond'} />
+              {!r.missing && (
+                <Pressable onPress={() => setDeletingTeamId(r.teamId)}>
+                  <Text style={styles.deleteRowLabel}>Delete</Text>
+                </Pressable>
+              )}
             </View>
             <TextInput
               value={r.killsRaw}
@@ -263,6 +271,19 @@ export default function VerifyResults() {
         ))}
       </View>
       </ScrollView>
+
+      {deletingTeamId && (
+        <PasswordConfirmPanel
+          label="DELETE THIS RESULT"
+          warning={`This permanently removes ${decorated.find((r) => r.teamId === deletingTeamId)?.teamName ?? 'this team'}'s result for this game${published ? ' and updates standings immediately' : ''}. This can't be undone.`}
+          confirmLabel="Delete result"
+          onCancel={() => setDeletingTeamId(null)}
+          onConfirmed={async () => {
+            await deleteResult.mutateAsync(deletingTeamId);
+            setDeletingTeamId(null);
+          }}
+        />
+      )}
 
       {missingRows.length > 0 && (
         <View style={{ flexDirection: 'row', gap: 9, alignItems: 'flex-start' }}>
@@ -306,6 +327,7 @@ const styles = StyleSheet.create({
   killsInput: { width: 74, height: 34, backgroundColor: color.base, borderWidth: 1, borderColor: color.hairlineInput, color: color.textPrimary, fontFamily: fontFamily.interRegular, fontSize: 13, paddingHorizontal: 10 },
   invalidInput: { backgroundColor: color.emberTint, borderColor: color.emberTintBorder },
   rowName: { fontFamily: fontFamily.interSemiBold, fontSize: 13, color: color.textPrimary, flexShrink: 1 },
+  deleteRowLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.06 * 10, color: color.ember, marginLeft: 'auto' },
   breakdownCell: { width: 108, textAlign: 'right', fontFamily: fontFamily.interMedium, fontSize: 13, color: color.textMuted },
   totalCell: { width: 84, textAlign: 'right', fontFamily: fontFamily.rajdhaniBold, fontSize: 18 },
   flagBar: { width: 3, alignSelf: 'stretch', backgroundColor: 'rgba(242,241,236,0.35)' },

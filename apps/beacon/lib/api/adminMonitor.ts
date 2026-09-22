@@ -173,7 +173,7 @@ export function useAdvanceGamePhase(gameId: string | undefined) {
 export function useSetLobbyCode(gameId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (lobbyCode: string) => {
+    mutationFn: async (lobbyCode: string | null) => {
       const { error } = await supabase.from('games').update({ lobby_code: lobbyCode }).eq('id', gameId as string);
       if (error) throw error;
     },

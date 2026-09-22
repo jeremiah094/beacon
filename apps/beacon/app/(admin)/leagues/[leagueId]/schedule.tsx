@@ -11,6 +11,7 @@ import { Diamond } from '../../../../components/Diamond';
 import { Spinner } from '../../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../../theme/tokens';
 import { useAdminLeague } from '../../../../lib/api/adminLeagues';
+import { useLeagueDefaults } from '../../../../lib/api/adminSettings';
 import {
   AdminGame,
   GameFormData,
@@ -31,13 +32,14 @@ import {
 // INSERT) and lock_soon exist per BUILD.md §5, so editing here is silent
 // and the rail says so rather than overclaiming.
 const TIMES = ['19:00', '20:00', '21:00', '21:30'];
-const MAPS = ['Storm Point', "World's Edge", 'Broken Moon', 'Olympus'];
+const FALLBACK_MAPS = ['Storm Point', "World's Edge", 'Broken Moon', 'Olympus'];
 
 export default function ScheduleMatches() {
   const { leagueId } = useLocalSearchParams<{ leagueId: string }>();
   const { data: league } = useAdminLeague(leagueId);
   const { data: games, isLoading } = useAdminGames(leagueId);
   const { data: approvedTeams } = useApprovedTeamCount(leagueId);
+  const { data: leagueDefaults } = useLeagueDefaults();
   const saveGame = useSaveGame(leagueId);
   const cancelGame = useCancelGame(leagueId);
   const setLobbyCode = useSetGameLobbyCode(leagueId);
@@ -45,12 +47,16 @@ export default function ScheduleMatches() {
   const { width } = useWindowDimensions();
   const isMobile = width < 860;
 
+  // The pool set on Settings — falls back to the original hardcoded list
+  // while defaults are loading, or if the pool was emptied.
+  const MAPS = leagueDefaults?.maps?.length ? leagueDefaults.maps : FALLBACK_MAPS;
+
   const [editingId, setEditingId] = useState<string | null>(null);
   const [round, setRound] = useState('');
   const [gameNumber, setGameNumber] = useState('');
   const [date, setDate] = useState('');
   const [time, setTime] = useState('20:00');
-  const [map, setMap] = useState('Storm Point');
+  const [map, setMap] = useState(MAPS[0]);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [justPublishedId, setJustPublishedId] = useState<string | null>(null);
   const [editingCodeId, setEditingCodeId] = useState<string | null>(null);
@@ -108,6 +114,11 @@ export default function ScheduleMatches() {
     const code = codeInput.trim();
     if (!code) return;
     await setLobbyCode.mutateAsync({ gameId, lobbyCode: code });
+    setEditingCodeId(null);
+  }
+
+  async function clearCode(gameId: string) {
+    await setLobbyCode.mutateAsync({ gameId, lobbyCode: null });
     setEditingCodeId(null);
   }
 
@@ -319,22 +330,29 @@ export default function ScheduleMatches() {
                   </View>
                   <View style={{ width: 150 }}>
                     {editingCodeId === g.id ? (
-                      <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
-                        <TextInput
-                          value={codeInput}
-                          onChangeText={setCodeInput}
-                          placeholder="e.g. XKQ4R"
-                          placeholderTextColor={color.fillPlaceholder}
-                          autoCapitalize="none"
-                          autoFocus
-                          style={styles.codeInput}
-                        />
-                        <Pressable onPress={() => saveCode(g.id)} disabled={setLobbyCode.isPending || !codeInput.trim()}>
-                          <Text style={styles.codeSaveLabel}>Save</Text>
-                        </Pressable>
-                        <Pressable onPress={() => setEditingCodeId(null)}>
-                          <Text style={styles.codeCancelLabel}>✕</Text>
-                        </Pressable>
+                      <View style={{ gap: 5 }}>
+                        <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
+                          <TextInput
+                            value={codeInput}
+                            onChangeText={setCodeInput}
+                            placeholder="e.g. XKQ4R"
+                            placeholderTextColor={color.fillPlaceholder}
+                            autoCapitalize="none"
+                            autoFocus
+                            style={styles.codeInput}
+                          />
+                          <Pressable onPress={() => saveCode(g.id)} disabled={setLobbyCode.isPending || !codeInput.trim()}>
+                            <Text style={styles.codeSaveLabel}>Save</Text>
+                          </Pressable>
+                          <Pressable onPress={() => setEditingCodeId(null)}>
+                            <Text style={styles.codeCancelLabel}>✕</Text>
+                          </Pressable>
+                        </View>
+                        {g.lobbyCode && (
+                          <Pressable onPress={() => clearCode(g.id)} disabled={setLobbyCode.isPending}>
+                            <Text style={styles.codeClearLabel}>Clear code</Text>
+                          </Pressable>
+                        )}
                       </View>
                     ) : cancelled ? (
                       <Text style={[styles.rowCode, { color: color.textMuted }]}>{g.lobbyCode ?? '—'}</Text>
@@ -453,6 +471,7 @@ const styles = StyleSheet.create({
   },
   codeSaveLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: color.textPrimary },
   codeCancelLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.textMuted },
+  codeClearLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.06 * 10, color: color.ember },
   rowMap: { flex: 1, fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted },
   editBtn: { paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1, borderColor: color.hairlineStrong },
   editBtnLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: color.textPrimary },

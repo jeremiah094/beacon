@@ -8,7 +8,9 @@ import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/hooks/useSession';
 import { useAdminNavCounts, useAdminProfile } from '../../lib/api/admin';
 
-export type AdminNavKey = 'leagues' | 'approvals' | 'schedule' | 'live' | 'results';
+export type AdminNavKey = 'leagues' | 'approvals' | 'schedule' | 'live' | 'results' | 'settings';
+
+const LEAGUE_SCOPED_KEYS: AdminNavKey[] = ['approvals', 'schedule', 'live', 'results'];
 
 type Breadcrumb = { label: string; href?: string };
 
@@ -35,6 +37,7 @@ const NAV_ITEMS: { key: AdminNavKey; label: string; icon: keyof typeof Ionicons.
   { key: 'schedule', label: 'Schedule', icon: 'calendar-outline' },
   { key: 'live', label: 'Live matches', icon: 'radio-outline' },
   { key: 'results', label: 'Results', icon: 'flag-outline' },
+  { key: 'settings', label: 'Settings', icon: 'settings-outline' },
 ];
 
 // Below this viewport width the fixed 236px sidebar + 372px rail alongside
@@ -65,6 +68,7 @@ export function AdminShell({
 
   function hrefFor(key: AdminNavKey): string {
     if (key === 'leagues') return '/(admin)/leagues';
+    if (key === 'settings') return '/(admin)/settings';
     if (!activeLeagueId) return '/(admin)/leagues';
     if (key === 'approvals') return `/(admin)/leagues/${activeLeagueId}/teams`;
     return `/(admin)/leagues/${activeLeagueId}/schedule`; // schedule/live/results all surface from here
@@ -76,7 +80,8 @@ export function AdminShell({
     if (key === 'approvals') return String(counts.pendingApprovals);
     if (key === 'schedule') return String(counts.scheduled);
     if (key === 'live') return String(counts.live);
-    return String(counts.results);
+    if (key === 'results') return String(counts.results);
+    return '';
   }
 
   function goTo(key: AdminNavKey) {
@@ -97,6 +102,17 @@ export function AdminShell({
       <View style={styles.navList}>
         {NAV_ITEMS.map((item) => {
           const isActive = item.key === active;
+          const isDisabled = LEAGUE_SCOPED_KEYS.includes(item.key) && !activeLeagueId;
+          if (isDisabled) {
+            return (
+              <View key={item.key} style={[styles.navRow, { opacity: 0.4 }]}>
+                <View style={styles.navLabelRow}>
+                  <Ionicons name={item.icon} size={15} color={color.textMuted} />
+                  <Text style={[styles.navLabel, { color: color.textMuted }]}>{item.label}</Text>
+                </View>
+              </View>
+            );
+          }
           return (
             <Pressable key={item.key} onPress={() => goTo(item.key)}>
               {({ hovered }: any) => (
@@ -117,12 +133,6 @@ export function AdminShell({
             </Pressable>
           );
         })}
-        <View style={[styles.navRow, { opacity: 0.4 }]}>
-          <View style={styles.navLabelRow}>
-            <Ionicons name="settings-outline" size={15} color={color.textMuted} />
-            <Text style={[styles.navLabel, { color: color.textMuted }]}>Settings</Text>
-          </View>
-        </View>
       </View>
 
       <View style={styles.sidebarFooter}>

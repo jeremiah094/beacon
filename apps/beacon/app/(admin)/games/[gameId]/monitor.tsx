@@ -121,6 +121,11 @@ export default function MonitorLiveMatch() {
     setEditingCode(false);
   }
 
+  async function clearCode() {
+    await setLobbyCode.mutateAsync(null);
+    setEditingCode(false);
+  }
+
   const codeChars = (game.lobbyCode ?? '·····').split('');
 
   return (
@@ -211,6 +216,11 @@ export default function MonitorLiveMatch() {
                 <Pressable onPress={() => setEditingCode(false)}>
                   <Text style={styles.copyLabel}>CANCEL</Text>
                 </Pressable>
+                {game.lobbyCode && (
+                  <Pressable onPress={clearCode} disabled={setLobbyCode.isPending}>
+                    <Text style={[styles.copyLabel, { color: color.ember }]}>CLEAR</Text>
+                  </Pressable>
+                )}
               </View>
             ) : (
               <View style={{ flexDirection: 'row', gap: 6 }}>

@@ -6,12 +6,13 @@ import { AdminButton } from '../../../../components/admin/AdminButton';
 import { AdminChip } from '../../../../components/admin/AdminChip';
 import { AdminTallyRow } from '../../../../components/admin/AdminTally';
 import { Diamond } from '../../../../components/Diamond';
+import { PasswordConfirmPanel } from '../../../../components/admin/PasswordConfirmPanel';
 import { Spinner } from '../../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../../theme/tokens';
 import { formatDateTime } from '../../../../lib/time';
 import { useSession } from '../../../../lib/hooks/useSession';
 import { useAdminLeague } from '../../../../lib/api/adminLeagues';
-import { ApprovalTeam, useApprovalQueue, useDecideTeam } from '../../../../lib/api/adminApprovals';
+import { ApprovalTeam, useApprovalQueue, useDecideTeam, useRemoveTeamFromLeague } from '../../../../lib/api/adminApprovals';
 
 // Reference: Beacon 12 Approve Teams.dc.html. The source shows captain
 // "email · phone" contact — Beacon never collects a phone number and the
@@ -27,11 +28,13 @@ export default function ApproveTeams() {
   const { data: league } = useAdminLeague(leagueId);
   const { data: queue, isLoading } = useApprovalQueue(leagueId);
   const decide = useDecideTeam(leagueId, userId);
+  const removeTeam = useRemoveTeamFromLeague(leagueId);
 
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('Pending');
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [reasonByTeam, setReasonByTeam] = useState<Record<string, string>>({});
   const [noteByTeam, setNoteByTeam] = useState<Record<string, string>>({});
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   const teamsPerLobby = league?.teams_per_lobby ?? 20;
   const approvedCount = (queue ?? []).filter((t) => t.status === 'approved').length;
@@ -56,6 +59,11 @@ export default function ApproveTeams() {
 
   async function undo(team: ApprovalTeam) {
     await decide.mutateAsync({ teamId: team.teamId, decision: 'pending' });
+  }
+
+  async function confirmRemove(team: ApprovalTeam) {
+    await removeTeam.mutateAsync(team.teamId);
+    setRemovingId(null);
   }
 
   return (
@@ -175,6 +183,10 @@ export default function ApproveTeams() {
               onNote={(v) => setNoteByTeam((s) => ({ ...s, [team.teamId]: v }))}
               onConfirmReject={() => confirmReject(team)}
               onUndo={() => undo(team)}
+              removing={removingId === team.teamId}
+              onStartRemove={() => setRemovingId(team.teamId)}
+              onCancelRemove={() => setRemovingId(null)}
+              onConfirmRemove={() => confirmRemove(team)}
             />
           ))}
         </View>
@@ -197,6 +209,10 @@ function TeamCard({
   onNote,
   onConfirmReject,
   onUndo,
+  removing,
+  onStartRemove,
+  onCancelRemove,
+  onConfirmRemove,
 }: {
   team: ApprovalTeam;
   region: string;
@@ -211,6 +227,10 @@ function TeamCard({
   onNote: (v: string) => void;
   onConfirmReject: () => void;
   onUndo: () => void;
+  removing: boolean;
+  onStartRemove: () => void;
+  onCancelRemove: () => void;
+  onConfirmRemove: () => Promise<void> | void;
 }) {
   const approvable = team.verifiedCount >= 3;
   const unverified = team.roster.filter((p) => !p.verified);
@@ -321,6 +341,14 @@ function TeamCard({
             </Text>
           </View>
         )
+      ) : removing ? (
+        <PasswordConfirmPanel
+          label="REMOVE THIS TEAM FROM THE LEAGUE"
+          warning={`This unregisters ${team.name} from this league and deletes their results, lineups, and substitutions for every game in it. Their roster and any other leagues they're in are untouched. This can't be undone.`}
+          confirmLabel="Remove team"
+          onCancel={onCancelRemove}
+          onConfirmed={onConfirmRemove}
+        />
       ) : (
         <View style={styles.resolvedRow}>
           <View style={{ flexDirection: 'row', gap: 9, alignItems: 'flex-start', flex: 1 }}>
@@ -331,9 +359,16 @@ function TeamCard({
                 : `Rejected — ${team.rejectionReason ?? 'reason recorded'}. The captain has been notified and can re-register.`}
             </Text>
           </View>
-          <Pressable onPress={onUndo} disabled={busy}>
-            <Text style={styles.undoLabel}>Undo</Text>
-          </Pressable>
+          <View style={{ flexDirection: 'row', gap: 14, alignItems: 'center' }}>
+            {team.status === 'approved' && (
+              <Pressable onPress={onStartRemove} disabled={busy}>
+                <Text style={styles.removeLabel}>Remove from league</Text>
+              </Pressable>
+            )}
+            <Pressable onPress={onUndo} disabled={busy}>
+              <Text style={styles.undoLabel}>Undo</Text>
+            </Pressable>
+          </View>
         </View>
       )}
     </View>
@@ -398,6 +433,7 @@ const styles = StyleSheet.create({
   resolvedRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16, borderTopWidth: 1, borderTopColor: color.hairline, paddingTop: 16 },
   resolvedText: { fontFamily: fontFamily.interMedium, fontSize: 12, lineHeight: 17 },
   undoLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.textMuted },
+  removeLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.ember },
   railTitle: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.16 * 10, textTransform: 'uppercase', color: color.textMuted },
   fillCard: { borderWidth: 1, borderColor: color.hairline, backgroundColor: color.panel, padding: 20, gap: 14 },
   fillCount: { fontFamily: fontFamily.rajdhaniBold, fontSize: 34, color: color.textPrimary },

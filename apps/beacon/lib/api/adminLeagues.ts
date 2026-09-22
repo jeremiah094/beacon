@@ -101,3 +101,21 @@ export function useSaveLeague(leagueId: string | undefined, userId: string | und
     },
   });
 }
+
+/** RLS (`leagues_write`) already covers DELETE for admins, and every child
+ * row — games, league_teams, results, lineups, lineup_players,
+ * substitutions — cascades on the league's deletion, so this is a plain
+ * single-table delete. */
+export function useDeleteLeague() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (leagueId: string) => {
+      const { error } = await supabase.from('leagues').delete().eq('id', leagueId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminLeagues'] });
+      queryClient.invalidateQueries({ queryKey: ['adminNavCounts'] });
+    },
+  });
+}

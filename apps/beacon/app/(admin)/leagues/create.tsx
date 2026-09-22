@@ -9,7 +9,10 @@ import { CornerCut } from '../../../components/CornerCut';
 import { Spinner } from '../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../theme/tokens';
 import { useSession } from '../../../lib/hooks/useSession';
-import { useAdminLeague, useSaveLeague } from '../../../lib/api/adminLeagues';
+import { useAdminLeague, useDeleteLeague, useSaveLeague } from '../../../lib/api/adminLeagues';
+import { useLeagueDefaults } from '../../../lib/api/adminSettings';
+import { REGIONS } from '../../../lib/leagueOptions';
+import { PasswordConfirmPanel } from '../../../components/admin/PasswordConfirmPanel';
 
 // Reference: Beacon 11 Create League.dc.html. Also serves as the edit
 // screen (?leagueId=X) — BUILD.md's 16 screens don't include a separate
@@ -18,13 +21,14 @@ import { useAdminLeague, useSaveLeague } from '../../../lib/api/adminLeagues';
 // BUILD.md §2 commits to one fixed ALGS formula (placement_points() in the
 // database), so this shows that one model as information, not a choice —
 // there's nothing for a second option to actually change server-side.
-const REGIONS = ['Ireland-wide', 'Leinster', 'Munster', 'Connacht / Ulster'];
 
 export default function CreateOrEditLeague() {
   const { leagueId } = useLocalSearchParams<{ leagueId?: string }>();
   const { userId } = useSession();
   const { data: existing, isLoading } = useAdminLeague(leagueId);
+  const { data: defaults } = useLeagueDefaults();
   const saveLeague = useSaveLeague(leagueId, userId);
+  const deleteLeague = useDeleteLeague();
 
   const [name, setName] = useState('');
   const [seasonLabel, setSeasonLabel] = useState('Season 3');
@@ -34,6 +38,7 @@ export default function CreateOrEditLeague() {
   const [endDate, setEndDate] = useState('');
   const [entryRules, setEntryRules] = useState('');
   const [loaded, setLoaded] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     if (existing && !loaded) {
@@ -47,6 +52,22 @@ export default function CreateOrEditLeague() {
       setLoaded(true);
     }
   }, [existing, loaded]);
+
+  // New league (no leagueId): seed region/teams from the admin's Settings
+  // defaults once they've loaded, instead of the hardcoded fallback.
+  useEffect(() => {
+    if (!leagueId && !loaded && defaults) {
+      setRegion(defaults.region);
+      setTeams(defaults.teamsPerLobby);
+      setLoaded(true);
+    }
+  }, [leagueId, loaded, defaults]);
+
+  async function handleDeleteLeague() {
+    if (!leagueId) return;
+    await deleteLeague.mutateAsync(leagueId);
+    router.replace('/(admin)/leagues');
+  }
 
   if (leagueId && (isLoading || !loaded)) {
     return (
@@ -149,6 +170,19 @@ export default function CreateOrEditLeague() {
               </Text>
             </View>
           )}
+
+          {leagueId &&
+            (confirmingDelete ? (
+              <PasswordConfirmPanel
+                label="DELETE THIS LEAGUE"
+                warning={`This permanently deletes ${name || 'this league'} — every game, result, and team registration under it. This can't be undone.`}
+                confirmLabel="Delete league"
+                onCancel={() => setConfirmingDelete(false)}
+                onConfirmed={handleDeleteLeague}
+              />
+            ) : (
+              <AdminButton label="Delete league" variant="destructiveOutline" onPress={() => setConfirmingDelete(true)} />
+            ))}
         </>
       }
     >

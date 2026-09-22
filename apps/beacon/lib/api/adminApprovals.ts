@@ -125,3 +125,28 @@ export function useDecideTeam(leagueId: string | undefined, adminId: string | un
     },
   });
 }
+
+/** Fully unregisters a team from a league — not a status change like
+ * decide/undo above. Several of the tables this touches (lineups,
+ * lineup_players, substitutions, league_teams) have no admin DELETE
+ * policy at all, so this calls the security-definer
+ * admin_remove_team_from_league() function instead of ad hoc client
+ * deletes (see 20260922000000_admin_settings_and_team_removal.sql). */
+export function useRemoveTeamFromLeague(leagueId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (teamId: string) => {
+      const { error } = await supabase.rpc('admin_remove_team_from_league', {
+        p_league_id: leagueId as string,
+        p_team_id: teamId,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminApprovalQueue', leagueId] });
+      queryClient.invalidateQueries({ queryKey: ['adminLeagues'] });
+      queryClient.invalidateQueries({ queryKey: ['adminNavCounts'] });
+      queryClient.invalidateQueries({ queryKey: ['standings'] });
+    },
+  });
+}

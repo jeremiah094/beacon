@@ -59,6 +59,27 @@ export type Database = {
           },
         ]
       }
+      league_defaults: {
+        Row: {
+          default_maps: string[]
+          default_region: string
+          default_teams_per_lobby: number
+          id: boolean
+        }
+        Insert: {
+          default_maps?: string[]
+          default_region?: string
+          default_teams_per_lobby?: number
+          id?: boolean
+        }
+        Update: {
+          default_maps?: string[]
+          default_region?: string
+          default_teams_per_lobby?: number
+          id?: boolean
+        }
+        Relationships: []
+      }
       league_teams: {
         Row: {
           decided_at: string | null
@@ -682,6 +703,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_remove_team_from_league: {
+        Args: { p_league_id: string; p_team_id: string }
+        Returns: undefined
+      }
       lock_overdue_lineups: { Args: never; Returns: undefined }
       placement_points: { Args: { p_placement: number }; Returns: number }
     }

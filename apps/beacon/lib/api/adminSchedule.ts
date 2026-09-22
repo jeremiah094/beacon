@@ -96,13 +96,14 @@ export function useSaveGame(leagueId: string | undefined) {
   });
 }
 
-/** Lets an admin set or change a game's real private-match code straight
- * from the schedule list — not just from the live monitor screen, which
- * is unreachable until the game is already lobby_open/in_progress. */
+/** Lets an admin set, replace, or clear a game's real private-match code
+ * straight from the schedule list — not just from the live monitor
+ * screen, which is unreachable until the game is already
+ * lobby_open/in_progress. `lobbyCode: null` clears it back to unset. */
 export function useSetGameLobbyCode(leagueId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ gameId, lobbyCode }: { gameId: string; lobbyCode: string }) => {
+    mutationFn: async ({ gameId, lobbyCode }: { gameId: string; lobbyCode: string | null }) => {
       const { error } = await supabase.from('games').update({ lobby_code: lobbyCode }).eq('id', gameId);
       if (error) throw error;
     },
