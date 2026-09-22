@@ -48,11 +48,18 @@ async function fetchMonitor(gameId: string): Promise<MonitorGame> {
     .single();
   if (error || !game) throw error ?? new Error('Game not found');
 
-  const { data: approved } = await supabase
+  // Fetches the captain via team_members(role='captain') rather than
+  // teams.captain_id -> profiles directly — the same relationship path
+  // adminApprovals.ts already uses successfully. A direct nested
+  // `teams.profiles` embed here was failing PostgREST's relationship
+  // resolution silently (no error surfaced, `approved` just came back
+  // null), which made every team checklist render as empty.
+  const { data: approved, error: approvedError } = await supabase
     .from('league_teams')
-    .select('team_id, teams(id, name, captain_id, profiles(display_name, gamertag))')
+    .select('team_id, teams(id, name, team_members(role, profiles(display_name, gamertag)))')
     .eq('league_id', game.league_id)
     .eq('status', 'approved');
+  if (approvedError) throw approvedError;
 
   const { data: lineups } = await supabase.from('lineups').select('id, team_id, confirmed_at, locked_at').eq('game_id', gameId);
   const lineupByTeam = new Map((lineups ?? []).map((l) => [l.team_id, l]));
@@ -83,10 +90,12 @@ async function fetchMonitor(gameId: string): Promise<MonitorGame> {
       else if (lineup?.confirmed_at) lineupState = 'confirmed';
       else if (lineup) lineupState = 'pending';
 
+      const captain = (t.team_members ?? []).find((m: any) => m.role === 'captain');
+
       return {
         teamId: t.id,
         name: t.name,
-        captainName: displayName(t.profiles as any),
+        captainName: displayName(captain?.profiles as any),
         lineupState,
         pendingSub: sub
           ? {
