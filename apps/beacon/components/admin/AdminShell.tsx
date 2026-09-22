@@ -17,9 +17,9 @@ type Breadcrumb = { label: string; href?: string };
 type Props = {
   active: AdminNavKey;
   /** When set, "Team approvals"/"Schedule"/"Live matches"/"Results" deep-link
-   * into this league instead of the leagues list (live/results are surfaced
-   * from the schedule table itself — there's no separate list screen for
-   * them, matching the reference screens' own scope). */
+   * into this league instead of the leagues list. Live matches still
+   * surfaces from the schedule table itself (no dedicated list screen);
+   * Results has its own list screen. */
   activeLeagueId?: string;
   breadcrumbs: Breadcrumb[];
   title: string;
@@ -71,7 +71,8 @@ export function AdminShell({
     if (key === 'settings') return '/(admin)/settings';
     if (!activeLeagueId) return '/(admin)/leagues';
     if (key === 'approvals') return `/(admin)/leagues/${activeLeagueId}/teams`;
-    return `/(admin)/leagues/${activeLeagueId}/schedule`; // schedule/live/results all surface from here
+    if (key === 'results') return `/(admin)/leagues/${activeLeagueId}/results`;
+    return `/(admin)/leagues/${activeLeagueId}/schedule`; // schedule/live surface from here
   }
 
   function countFor(key: AdminNavKey): string {

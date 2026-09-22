@@ -8,6 +8,7 @@ import { AdminChip } from '../../../../components/admin/AdminChip';
 import { Diamond } from '../../../../components/Diamond';
 import { Spinner } from '../../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../../theme/tokens';
+import { formatCountdownDHMS } from '../../../../lib/time';
 import { useSession } from '../../../../lib/hooks/useSession';
 import { LineupState, MonitorTeam, useAdvanceGamePhase, useDecideSubstitution, useMonitorGame, useSetLobbyCode } from '../../../../lib/api/adminMonitor';
 
@@ -72,17 +73,14 @@ export default function MonitorLiveMatch() {
   const diffSeconds = Math.round((scheduledMs - now) / 1000);
   const remaining = Math.max(0, diffSeconds);
   const elapsed = Math.max(0, -diffSeconds);
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const clock = clockCritical
-    ? `${pad(Math.floor(remaining / 60))}:${pad(remaining % 60)}`
-    : `${pad(Math.floor(elapsed / 3600))}:${pad(Math.floor((elapsed % 3600) / 60))}:${pad(elapsed % 60)}`;
+  const clock = formatCountdownDHMS(clockCritical ? remaining : elapsed);
 
   async function handleAdvance() {
     if (phaseIdx >= 3) {
       router.push(`/(admin)/games/${gameId}/verify` as any);
       return;
     }
-    await advance.mutateAsync({ nextStatus: PHASE_STATUS[phaseIdx + 1], currentLobbyCode: game?.lobbyCode ?? null });
+    await advance.mutateAsync({ nextStatus: PHASE_STATUS[phaseIdx + 1] });
   }
 
   async function approveSub(t: MonitorTeam) {

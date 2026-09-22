@@ -141,20 +141,14 @@ export function useMonitorGame(gameId: string | undefined) {
   });
 }
 
-function randomLobbyCode(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  let out = '';
-  for (let i = 0; i < 5; i++) out += chars[Math.floor(Math.random() * chars.length)];
-  return out;
-}
-
+/** Never fabricates a lobby code — advancing to lobby_open without one
+ * set just leaves it unset; an admin enters the real one when they have
+ * it (schedule.tsx's create form, or the LOBBY CODE field below). */
 export function useAdvanceGamePhase(gameId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ nextStatus, currentLobbyCode }: { nextStatus: string; currentLobbyCode: string | null }) => {
-      const payload: { status: string; lobby_code?: string } = { status: nextStatus };
-      if (nextStatus === 'lobby_open' && !currentLobbyCode) payload.lobby_code = randomLobbyCode();
-      const { error } = await supabase.from('games').update(payload).eq('id', gameId as string);
+    mutationFn: async ({ nextStatus }: { nextStatus: string }) => {
+      const { error } = await supabase.from('games').update({ status: nextStatus }).eq('id', gameId as string);
       if (error) throw error;
     },
     onSuccess: () => {

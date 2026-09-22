@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
+import { placementPoints } from '../scoring';
 
 export { placementPoints } from '../scoring';
 
@@ -179,5 +180,64 @@ export function useDeleteResult(gameId: string | undefined) {
       queryClient.invalidateQueries({ queryKey: ['standings'] });
       queryClient.invalidateQueries({ queryKey: ['adminNavCounts'] });
     },
+  });
+}
+
+export type ResultsListGame = {
+  id: string;
+  roundNumber: number;
+  gameNumber: number;
+  scheduledAt: string;
+  map: string | null;
+  published: boolean;
+  topTeamName: string | null;
+  topTeamPoints: number | null;
+};
+
+async function fetchResultsList(leagueId: string): Promise<ResultsListGame[]> {
+  const { data: games, error } = await supabase
+    .from('games')
+    .select('id, round_number, game_number, scheduled_at, map')
+    .eq('league_id', leagueId)
+    .eq('status', 'completed')
+    .order('scheduled_at', { ascending: false });
+  if (error) throw error;
+  if (!games || games.length === 0) return [];
+
+  const gameIds = games.map((g) => g.id);
+  const { data: results } = await supabase
+    .from('results')
+    .select('game_id, placement, kills, published_at, teams(name)')
+    .in('game_id', gameIds);
+
+  return games.map((g) => {
+    const rows = (results ?? []).filter((r) => r.game_id === g.id);
+    const published = rows.some((r) => !!r.published_at);
+    const ranked = rows
+      .filter((r) => r.placement != null && r.kills != null)
+      .map((r) => ({
+        name: (r.teams as any)?.name ?? 'Team',
+        total: placementPoints(r.placement as number) + (r.kills as number),
+      }))
+      .sort((a, b) => b.total - a.total);
+
+    return {
+      id: g.id,
+      roundNumber: g.round_number,
+      gameNumber: g.game_number,
+      scheduledAt: g.scheduled_at,
+      map: g.map,
+      published,
+      topTeamName: ranked[0]?.name ?? null,
+      topTeamPoints: ranked[0]?.total ?? null,
+    };
+  });
+}
+
+export function useResultsList(leagueId: string | undefined) {
+  return useQuery({
+    queryKey: ['adminResultsList', leagueId],
+    queryFn: () => fetchResultsList(leagueId as string),
+    enabled: !!leagueId,
   });
 }

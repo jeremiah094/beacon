@@ -57,6 +57,7 @@ export default function ScheduleMatches() {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('20:00');
   const [map, setMap] = useState(MAPS[0]);
+  const [lobbyCodeInput, setLobbyCodeInput] = useState('');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [justPublishedId, setJustPublishedId] = useState<string | null>(null);
   const [editingCodeId, setEditingCodeId] = useState<string | null>(null);
@@ -73,6 +74,7 @@ export default function ScheduleMatches() {
     setDate(d.toISOString().slice(0, 10));
     setTime(d.toISOString().slice(11, 16));
     setMap(g.map ?? MAPS[0]);
+    setLobbyCodeInput(g.lobbyCode ?? '');
   }
 
   function clearForm() {
@@ -80,6 +82,7 @@ export default function ScheduleMatches() {
     setRound('');
     setGameNumber('');
     setDate('');
+    setLobbyCodeInput('');
     setJustPublishedId(null);
   }
 
@@ -96,7 +99,13 @@ export default function ScheduleMatches() {
 
   async function publish() {
     if (!ready || !scheduledAt) return;
-    const form: GameFormData = { roundNumber: Number(round), gameNumber: Number(gameNumber), scheduledAt, map };
+    const form: GameFormData = {
+      roundNumber: Number(round),
+      gameNumber: Number(gameNumber),
+      scheduledAt,
+      map,
+      lobbyCode: lobbyCodeInput.trim() || null,
+    };
     const id = await saveGame.mutateAsync({ gameId: editingId ?? undefined, form });
     if (editingId) {
       setEditingId(null);
@@ -172,6 +181,7 @@ export default function ScheduleMatches() {
                   ['League', league?.name ?? '—'],
                   ['When', whenText],
                   ['Map', map],
+                  ['Lobby code', lobbyCodeInput.trim() || 'Not set yet'],
                   ['Format', 'Battle royale · trios'],
                   ['Teams', `${approvedTeams ?? 0} approved`],
                 ].map(([k, v]) => (
@@ -273,6 +283,18 @@ export default function ScheduleMatches() {
             </Pressable>
           ))}
         </View>
+      </Field>
+
+      <Field label="Lobby code (optional)">
+        <TextInput
+          value={lobbyCodeInput}
+          onChangeText={(v) => { setLobbyCodeInput(v); setJustPublishedId(null); }}
+          placeholder="e.g. XKQ4R — skip if you don't have it yet, set it later"
+          placeholderTextColor={color.fillPlaceholder}
+          autoCapitalize="none"
+          style={[styles.input, tabularNums]}
+        />
+        <Text style={styles.helper}>Never generated automatically — leave blank and set the real code from the table below once you have it.</Text>
       </Field>
 
       <View style={styles.eligibleBox}>
@@ -382,7 +404,7 @@ export default function ScheduleMatches() {
                     )}
                     {editable && (
                       <>
-                        <Pressable onPress={() => openLobby.mutateAsync({ gameId: g.id, currentLobbyCode: g.lobbyCode })} disabled={openLobby.isPending}>
+                        <Pressable onPress={() => openLobby.mutateAsync(g.id)} disabled={openLobby.isPending}>
                           <AdminChip label="OPEN LOBBY" tone="verified" dotShape="circle" />
                         </Pressable>
                         <Pressable onPress={() => startEdit(g)}>
@@ -436,6 +458,7 @@ const styles = StyleSheet.create({
   formRowMobile: { flexDirection: 'column', alignItems: 'stretch' },
   fieldLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.16 * 10, textTransform: 'uppercase', color: color.textMuted },
   input: { height: 46, backgroundColor: color.panel, borderWidth: 1, borderColor: color.hairlineInput, color: color.textPrimary, fontSize: 15, paddingHorizontal: 14, fontFamily: fontFamily.interRegular },
+  helper: { fontFamily: fontFamily.interRegular, fontSize: 11, lineHeight: 15.5, color: color.textMuted },
   timeChip: { height: 46, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
   timeChipLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 13, color: color.textMuted },
   mapChip: { paddingVertical: 13, paddingHorizontal: 18, borderWidth: 1 },

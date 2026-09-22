@@ -108,7 +108,7 @@ export default function VerifyResults() {
       activeLeagueId={game.leagueId}
       breadcrumbs={[
         { label: game.leagueName, href: `/(admin)/leagues/create?leagueId=${game.leagueId}` as any },
-        { label: 'Results', href: `/(admin)/leagues/${game.leagueId}/schedule` as any },
+        { label: 'Results', href: `/(admin)/leagues/${game.leagueId}/results` as any },
         { label: `Match ${game.roundNumber} · Game ${game.gameNumber}` },
       ]}
       title="VERIFY RESULTS"

@@ -56,3 +56,19 @@ export function formatCountdown(msRemaining: number): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return hours > 0 ? `${pad(hours)}:${pad(minutes)}:${pad(seconds)}` : `${pad(minutes)}:${pad(seconds)}`;
 }
+
+/** "2d 04:15:09" (or "04:15:09" under a day) — for the admin Monitor
+ * screen's "match starts in" / "elapsed" clock, which can genuinely be
+ * days away for a game scheduled ahead of time. Always wraps into
+ * hours/minutes/seconds rather than letting one unit grow unbounded
+ * (e.g. showing "477" where the reader expects at most 59). */
+export function formatCountdownDHMS(secondsRemaining: number): string {
+  const total = Math.max(0, Math.floor(secondsRemaining));
+  const days = Math.floor(total / 86_400);
+  const hours = Math.floor((total % 86_400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  const seconds = total % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const clock = `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  return days > 0 ? `${days}d ${clock}` : clock;
+}
