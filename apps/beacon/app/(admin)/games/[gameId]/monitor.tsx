@@ -5,23 +5,28 @@ import * as ClipboardAPI from 'expo-clipboard';
 import { AdminShell } from '../../../../components/admin/AdminShell';
 import { AdminButton } from '../../../../components/admin/AdminButton';
 import { AdminChip } from '../../../../components/admin/AdminChip';
+import { AdminSelectField } from '../../../../components/admin/AdminSelectField';
 import { Diamond } from '../../../../components/Diamond';
 import { Spinner } from '../../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../../theme/tokens';
 import { formatCountdownDHMS } from '../../../../lib/time';
 import { useSession } from '../../../../lib/hooks/useSession';
-import { LineupState, MonitorTeam, useAdvanceGamePhase, useDecideSubstitution, useMonitorGame, useSetLobbyCode } from '../../../../lib/api/adminMonitor';
+import { LineupState, MonitorTeam, useAdvanceGamePhase, useDecideSubstitution, useMonitorGame, useSetLobbyCode, useSetLobbyPresence } from '../../../../lib/api/adminMonitor';
 
-// Reference: Beacon 14 Monitor Live Match.dc.html. Two deliberate
-// departures from the source, both because Beacon's real integrations
-// can't back what it shows:
-//  - "IN LOBBY" reads UNKNOWN for every team, not just the two the mock
-//    calls out — apexlegendsapi.com has no live custom-lobby-presence
-//    endpoint, so there's no honest way to report any team as "in lobby"
-//    or "not seen".
-//  - "Message all captains" / "Message captain" are dropped — Beacon has
-//    no in-app messaging. "MARK NO-SHOW" is dropped too; a no-show is
-//    recorded as part of verifying results (screen 15), not here.
+const LOBBY_STATUS_OPTIONS = [
+  { value: 'in_lobby', label: 'In-Lobby' },
+  { value: 'no', label: 'No' },
+];
+
+// Reference: Beacon 14 Monitor Live Match.dc.html. One deliberate
+// departure from the source: "Message all captains" / "Message captain"
+// are dropped — Beacon has no in-app messaging. "MARK NO-SHOW" is dropped
+// too; a no-show is recorded as part of verifying results (screen 15),
+// not here.
+//
+// "IN LOBBY" isn't read from Apex — apexlegendsapi.com has no live
+// custom-lobby-presence endpoint — so it's a dropdown the admin sets by
+// hand while watching the lobby themselves, not an automatic read.
 const PHASES = ['SCHEDULED', 'LOBBY OPEN', 'IN PROGRESS', 'COMPLETED'];
 const PHASE_STATUS = ['scheduled', 'lobby_open', 'in_progress', 'completed'];
 
@@ -32,6 +37,7 @@ export default function MonitorLiveMatch() {
   const advance = useAdvanceGamePhase(gameId);
   const decideSub = useDecideSubstitution(gameId);
   const setLobbyCode = useSetLobbyCode(gameId);
+  const setLobbyPresence = useSetLobbyPresence(gameId);
 
   const [filter, setFilter] = useState<'All' | 'Needs attention' | 'Ready'>('All');
   const [copied, setCopied] = useState(false);
@@ -98,6 +104,11 @@ export default function MonitorLiveMatch() {
   async function denySub(t: MonitorTeam) {
     if (!t.pendingSub || !userId) return;
     await decideSub.mutateAsync({ requestId: t.pendingSub.requestId, teamId: t.teamId, approve: false, adminId: userId });
+  }
+
+  async function updateLobbyPresence(t: MonitorTeam, status: string) {
+    if (!userId || (status !== 'in_lobby' && status !== 'no')) return;
+    await setLobbyPresence.mutateAsync({ teamId: t.teamId, status, adminId: userId });
   }
 
   async function copyCode() {
@@ -297,7 +308,7 @@ export default function MonitorLiveMatch() {
               {notSetCount > 0
                 ? `${notSetCount} team${notSetCount === 1 ? '' : 's'} still ${notSetCount === 1 ? 'has' : 'have'} no lineup submitted.`
                 : 'Every team has a lineup for this game.'}{' '}
-              In-lobby presence isn't trackable through Beacon's Apex integration, so it isn't shown here.
+              Mark teams In-Lobby below as you see them join the private match.
             </Text>
           </View>
 
@@ -354,15 +365,25 @@ export default function MonitorLiveMatch() {
                 </Text>
               </View>
               <LineupPill state={t.lineupState} />
-              <AdminChip label="UNKNOWN" tone="neutral" />
+              <View style={{ width: 148 }}>
+                <AdminSelectField
+                  value={t.inLobbyStatus ?? ''}
+                  options={LOBBY_STATUS_OPTIONS}
+                  placeholder="Unknown"
+                  onChange={(v) => updateLobbyPresence(t, v)}
+                  style={{ width: 132 }}
+                />
+              </View>
               <View style={{ width: 112, alignItems: 'flex-end' }}>
-                {t.pendingSub && (
+                {t.pendingSub ? (
                   <Pressable onPress={() => approveSub(t)} disabled={decideSub.isPending}>
                     <View style={styles.rowActionBtn}>
                       <Text style={styles.rowActionLabel}>APPROVE SUB</Text>
                     </View>
                   </Pressable>
-                )}
+                ) : t.inLobbyStatus === 'in_lobby' ? (
+                  <AdminChip label="CHECKED" tone="verified" dotShape="diamond" />
+                ) : null}
               </View>
             </View>
           );
@@ -371,7 +392,7 @@ export default function MonitorLiveMatch() {
       </ScrollView>
 
       <Text style={styles.footnote}>
-        Lobby presence isn't trackable via Beacon's Apex integration, so every row reads unknown rather than assuming a team is absent.
+        IN LOBBY is set by hand — Beacon has no live read from the private Apex lobby, so a row stays Unknown until an organiser marks it.
       </Text>
     </AdminShell>
   );

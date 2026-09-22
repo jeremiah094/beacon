@@ -8,6 +8,7 @@ export type MonitorTeam = {
   name: string;
   captainName: string;
   lineupState: LineupState;
+  inLobbyStatus: 'in_lobby' | 'no' | null;
   pendingSub: {
     requestId: string;
     outProfileId: string;
@@ -64,6 +65,9 @@ async function fetchMonitor(gameId: string): Promise<MonitorGame> {
   const { data: lineups } = await supabase.from('lineups').select('id, team_id, confirmed_at, locked_at').eq('game_id', gameId);
   const lineupByTeam = new Map((lineups ?? []).map((l) => [l.team_id, l]));
 
+  const { data: presence } = await supabase.from('lobby_presence').select('team_id, status').eq('game_id', gameId);
+  const presenceByTeam = new Map((presence ?? []).map((p) => [p.team_id, p.status as 'in_lobby' | 'no']));
+
   const { data: subs } = await supabase
     .from('substitution_requests')
     .select(
@@ -97,6 +101,7 @@ async function fetchMonitor(gameId: string): Promise<MonitorGame> {
         name: t.name,
         captainName: displayName(captain?.profiles as any),
         lineupState,
+        inLobbyStatus: presenceByTeam.get(t.id) ?? null,
         pendingSub: sub
           ? {
               requestId: sub.id,
@@ -183,6 +188,24 @@ export function useSetLobbyCode(gameId: string | undefined) {
   return useMutation({
     mutationFn: async (lobbyCode: string | null) => {
       const { error } = await supabase.from('games').update({ lobby_code: lobbyCode }).eq('id', gameId as string);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminMonitor', gameId] });
+    },
+  });
+}
+
+/** Admin-only manual lobby presence — Beacon has no live Apex
+ * custom-lobby endpoint, so this is the organiser's own call, not a
+ * read from the game. */
+export function useSetLobbyPresence(gameId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ teamId, status, adminId }: { teamId: string; status: 'in_lobby' | 'no'; adminId: string }) => {
+      const { error } = await supabase
+        .from('lobby_presence')
+        .upsert({ game_id: gameId as string, team_id: teamId, status, updated_by: adminId }, { onConflict: 'game_id,team_id' });
       if (error) throw error;
     },
     onSuccess: () => {

@@ -232,13 +232,14 @@ export default function VerifyResults() {
       )}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }}>
-      <View style={[styles.table, { minWidth: 560 }]}>
+      <View style={[styles.table, { minWidth: 644 }]}>
         <View style={styles.tableHeaderRow}>
           <Text style={[styles.tableHeaderCell, { width: 66 }]}>PLACE</Text>
           <Text style={[styles.tableHeaderCell, { flex: 1 }]}>TEAM</Text>
           <Text style={[styles.tableHeaderCell, { width: 84 }]}>KILLS</Text>
           <Text style={[styles.tableHeaderCell, { width: 108, textAlign: 'right' }]}>PLACE + KILLS</Text>
           <Text style={[styles.tableHeaderCell, { width: 84, textAlign: 'right' }]}>TOTAL</Text>
+          <Text style={[styles.tableHeaderCell, { width: 84, textAlign: 'right' }]}>ACTIONS</Text>
         </View>
         {visible.map((r) => (
           <View key={r.teamId} style={[styles.tableRow, r.missing && { backgroundColor: color.panel, borderLeftWidth: 2, borderLeftColor: color.ember }]}>
@@ -252,11 +253,6 @@ export default function VerifyResults() {
             <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 9, minWidth: 0 }}>
               <Text style={styles.rowName} numberOfLines={1}>{r.teamName}</Text>
               <AdminChip label={r.missing ? 'MISSING' : 'ADMIN'} tone={r.missing ? 'ember' : 'neutral'} dotShape={r.missing ? 'circle' : 'diamond'} />
-              {!r.missing && (
-                <Pressable onPress={() => setDeletingTeamId(r.teamId)}>
-                  <Text style={styles.deleteRowLabel}>Delete</Text>
-                </Pressable>
-              )}
             </View>
             <TextInput
               value={r.killsRaw}
@@ -267,6 +263,15 @@ export default function VerifyResults() {
             />
             <Text style={[styles.breakdownCell, tabularNums]}>{r.total != null ? `${placementPoints(r.placeNum)} + ${r.killsNum}` : '—'}</Text>
             <Text style={[styles.totalCell, { color: r.missing ? color.ember : color.textPrimary }, tabularNums]}>{r.total ?? '—'}</Text>
+            <View style={{ width: 84, alignItems: 'flex-end' }}>
+              {!r.missing && (
+                <Pressable onPress={() => setDeletingTeamId(r.teamId)}>
+                  <View style={styles.deleteRowBtn}>
+                    <Text style={styles.deleteRowLabel}>Delete</Text>
+                  </View>
+                </Pressable>
+              )}
+            </View>
           </View>
         ))}
       </View>
@@ -327,7 +332,8 @@ const styles = StyleSheet.create({
   killsInput: { width: 74, height: 34, backgroundColor: color.base, borderWidth: 1, borderColor: color.hairlineInput, color: color.textPrimary, fontFamily: fontFamily.interRegular, fontSize: 13, paddingHorizontal: 10 },
   invalidInput: { backgroundColor: color.emberTint, borderColor: color.emberTintBorder },
   rowName: { fontFamily: fontFamily.interSemiBold, fontSize: 13, color: color.textPrimary, flexShrink: 1 },
-  deleteRowLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.06 * 10, color: color.ember, marginLeft: 'auto' },
+  deleteRowBtn: { paddingVertical: 6, paddingHorizontal: 11, borderWidth: 1, borderColor: color.emberBorderStrong },
+  deleteRowLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.06 * 10, color: color.ember },
   breakdownCell: { width: 108, textAlign: 'right', fontFamily: fontFamily.interMedium, fontSize: 13, color: color.textMuted },
   totalCell: { width: 84, textAlign: 'right', fontFamily: fontFamily.rajdhaniBold, fontSize: 18 },
   flagBar: { width: 3, alignSelf: 'stretch', backgroundColor: 'rgba(242,241,236,0.35)' },
