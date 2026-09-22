@@ -277,7 +277,19 @@ export default function MonitorLiveMatch() {
               </View>
               <View style={{ flexDirection: 'row', gap: 2 }}>
                 {game.teams.map((t) => (
-                  <View key={t.teamId} style={{ flex: 1, height: 5, backgroundColor: t.lineupState === 'locked' ? color.verified : t.lineupState === 'sub_pending' ? color.ember : 'rgba(242,241,236,0.2)' }} />
+                  <View
+                    key={t.teamId}
+                    style={{
+                      flex: 1,
+                      height: 5,
+                      backgroundColor:
+                        t.lineupState === 'locked' || t.lineupState === 'confirmed'
+                          ? color.verified
+                          : t.lineupState === 'sub_pending'
+                            ? color.ember
+                            : 'rgba(242,241,236,0.2)',
+                    }}
+                  />
                 ))}
               </View>
             </View>
@@ -369,11 +381,13 @@ function LineupPill({ state }: { state: LineupState }) {
   const cfg =
     state === 'locked'
       ? { label: 'LOCKED', tone: 'verified' as const }
-      : state === 'sub_pending'
-        ? { label: 'SUB PENDING', tone: 'ember' as const }
-        : state === 'pending'
-          ? { label: 'PENDING', tone: 'neutral' as const }
-          : { label: 'NOT SET', tone: 'ember' as const };
+      : state === 'confirmed'
+        ? { label: 'CONFIRMED', tone: 'verified' as const }
+        : state === 'sub_pending'
+          ? { label: 'SUB PENDING', tone: 'ember' as const }
+          : state === 'pending'
+            ? { label: 'PENDING', tone: 'neutral' as const }
+            : { label: 'NOT SET', tone: 'ember' as const };
   return <AdminChip label={cfg.label} tone={cfg.tone} />;
 }
 

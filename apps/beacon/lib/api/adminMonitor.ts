@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 
-export type LineupState = 'not_set' | 'pending' | 'locked' | 'sub_pending';
+export type LineupState = 'not_set' | 'pending' | 'confirmed' | 'locked' | 'sub_pending';
 
 export type MonitorTeam = {
   teamId: string;
@@ -73,9 +73,14 @@ async function fetchMonitor(gameId: string): Promise<MonitorGame> {
       const t = r.teams!;
       const lineup = lineupByTeam.get(t.id);
       const sub = subByTeam.get(t.id);
+      // `pending` was previously used for both "captain hasn't confirmed
+      // yet" and "confirmed, just waiting on the T-10m lock" — the same
+      // label for a submitted lineup and a not-yet-submitted one, which
+      // read as "nothing submitted" even once a captain had confirmed.
       let lineupState: LineupState = 'not_set';
       if (sub) lineupState = 'sub_pending';
       else if (lineup?.locked_at) lineupState = 'locked';
+      else if (lineup?.confirmed_at) lineupState = 'confirmed';
       else if (lineup) lineupState = 'pending';
 
       return {
