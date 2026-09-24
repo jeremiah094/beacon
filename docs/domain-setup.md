@@ -197,3 +197,27 @@ DESCRIPTION
   information about the current project
 
 ```
+
+## Verify run — 2026-09-24T09:31:58Z
+
+### A record: beaconproject.eu (expect 172.66.0.241)
+```
+3.33.130.190
+15.197.148.33
+172.66.0.241
+```
+
+### TXT record: _cf-custom-hostname.beaconproject.eu
+```
+"419f97c3-d1f2-418e-8cfd-6469dd2c779f"
+```
+
+### CNAME record: _acme-challenge.beaconproject.eu
+```
+beaconproject.eu.7dede208f6a1d738.dcv.cloudflare.com.
+```
+
+### HTTPS check: https://beaconproject.eu
+```
+HTTP 200 in 0.664422s (final URL: https://beaconproject.eu/)
+```
