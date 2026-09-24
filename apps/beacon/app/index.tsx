@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { Redirect } from 'expo-router';
 import { Spinner } from '../components/Spinner';
+import { LandingPage } from '../components/marketing/LandingPage';
 import { color } from '../theme/tokens';
 import { supabase } from '../lib/supabase';
 
@@ -46,6 +47,12 @@ export default function Index() {
     );
   }
 
-  if (!userId) return <Redirect href="/(auth)/sign-up" />;
+  if (!userId) {
+    // Web's logged-out homepage is a real marketing page, not a redirect —
+    // beaconproject.eu itself is the landing page. Native has no public
+    // web presence to advertise on, so it goes straight to sign-in.
+    if (Platform.OS === 'web') return <LandingPage />;
+    return <Redirect href="/(auth)/sign-up" />;
+  }
   return <Redirect href={isAdmin ? '/(admin)/leagues' : '/(player)/stats'} />;
 }

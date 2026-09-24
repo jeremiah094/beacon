@@ -197,6 +197,28 @@ export default function Profile() {
               </View>
             )}
           </Pressable>
+          <Pressable onPress={() => router.push('/privacy')}>
+            {({ hovered }: any) => (
+              <View style={[styles.settingsRow, hovered && { borderColor: color.hairlineStrong }]}>
+                <View style={styles.settingsLabelRow}>
+                  <Ionicons name="lock-closed-outline" size={16} color={color.textPrimary} />
+                  <Text style={styles.settingsLabel}>Privacy Policy</Text>
+                </View>
+                <Text style={styles.chevron}>→</Text>
+              </View>
+            )}
+          </Pressable>
+          <Pressable onPress={() => router.push('/terms')}>
+            {({ hovered }: any) => (
+              <View style={[styles.settingsRow, hovered && { borderColor: color.hairlineStrong }]}>
+                <View style={styles.settingsLabelRow}>
+                  <Ionicons name="document-text-outline" size={16} color={color.textPrimary} />
+                  <Text style={styles.settingsLabel}>Terms of Service</Text>
+                </View>
+                <Text style={styles.chevron}>→</Text>
+              </View>
+            )}
+          </Pressable>
           {isAdmin && (
             <Pressable onPress={() => router.push('/(admin)/leagues')}>
               {({ hovered }: any) => (
