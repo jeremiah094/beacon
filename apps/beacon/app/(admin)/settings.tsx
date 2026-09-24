@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router } from 'expo-router';
 import { AdminShell } from '../../components/admin/AdminShell';
 import { AdminButton } from '../../components/admin/AdminButton';
 import { Diamond } from '../../components/Diamond';
@@ -133,6 +134,12 @@ export default function AdminSettings() {
             </View>
           </Pressable>
         </View>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Account</Text>
+        <Text style={styles.sectionHint}>Change the password for your own admin sign-in.</Text>
+        <AdminButton label="Change password" variant="secondary" onPress={() => router.push('/reset-password')} />
       </View>
 
       {justSaved && (

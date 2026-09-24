@@ -9,6 +9,7 @@ export default function Index() {
   const [checked, setChecked] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [recovery, setRecovery] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -20,11 +21,22 @@ export default function Index() {
       }
       setChecked(true);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+    // A password-recovery email link lands here (its redirectTo is just
+    // the site origin) with a session Supabase already attached to the
+    // URL — without this check that session would look like an ordinary
+    // sign-in and redirect straight into the app, skipping the "set a new
+    // password" step entirely.
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setRecovery(true);
+        return;
+      }
       setUserId(session?.user.id ?? null);
     });
     return () => sub.subscription.unsubscribe();
   }, []);
+
+  if (recovery) return <Redirect href="/reset-password" />;
 
   if (!checked) {
     return (

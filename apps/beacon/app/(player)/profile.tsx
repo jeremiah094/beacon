@@ -186,6 +186,17 @@ export default function Profile() {
               </View>
             )}
           </Pressable>
+          <Pressable onPress={() => router.push('/reset-password')}>
+            {({ hovered }: any) => (
+              <View style={[styles.settingsRow, hovered && { borderColor: color.hairlineStrong }]}>
+                <View style={styles.settingsLabelRow}>
+                  <Ionicons name="key-outline" size={16} color={color.textPrimary} />
+                  <Text style={styles.settingsLabel}>Change password</Text>
+                </View>
+                <Text style={styles.chevron}>→</Text>
+              </View>
+            )}
+          </Pressable>
           {isAdmin && (
             <Pressable onPress={() => router.push('/(admin)/leagues')}>
               {({ hovered }: any) => (

@@ -18,7 +18,7 @@ import { ApexLinkStats, ApexPlatform, PLATFORM_OPTIONS, linkApexId } from '../..
 // (form/verifying/verified) is preserved; `confirmEmail` is added because
 // this build talks to real Supabase auth, where sign-up may require email
 // confirmation before a session exists to attribute the Apex link to.
-type Phase = 'form' | 'confirmEmail' | 'linking' | 'verifying' | 'verified';
+type Phase = 'form' | 'confirmEmail' | 'linking' | 'verifying' | 'verified' | 'forgotPassword' | 'resetSent';
 type IdType = 'ea' | 'apex';
 type Mode = 'signUp' | 'signIn';
 
@@ -50,6 +50,7 @@ export default function SignUp() {
     if (password.length < 8) missing.push('a password of 8 characters or more');
   }
   const ready = missing.length === 0;
+  const emailValid = /^\S+@\S+\.\S+$/.test(email);
 
   let blockedReason = '';
   if (missing.length === 1) blockedReason = `Still needed: ${missing[0]}.`;
@@ -86,8 +87,25 @@ export default function SignUp() {
     }
   }
 
+  async function sendResetEmail() {
+    setAuthError(null);
+    const emailRedirectTo = typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined;
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: emailRedirectTo });
+    if (error) {
+      setAuthError(error.message);
+      return;
+    }
+    setPhase('resetSent');
+  }
+
   async function handlePrimary() {
-    if (phase === 'form' && isSignIn) {
+    if (phase === 'forgotPassword') {
+      if (!emailValid) return;
+      await sendResetEmail();
+    } else if (phase === 'resetSent') {
+      setPhase('form');
+      setMode('signIn');
+    } else if (phase === 'form' && isSignIn) {
       if (!ready) return;
       setAuthError(null);
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -145,7 +163,7 @@ export default function SignUp() {
     setStats(null);
   }
 
-  const primary = primaryFor(phase, ready, isSignIn, linkReady);
+  const primary = primaryFor(phase, ready, isSignIn, linkReady, emailValid);
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -181,6 +199,11 @@ export default function SignUp() {
                   style={styles.bareInput}
                 />
               </View>
+              {isSignIn && (
+                <Pressable onPress={() => { setPhase('forgotPassword'); setAuthError(null); }}>
+                  <Text style={styles.forgotLabel}>Forgot password?</Text>
+                </Pressable>
+              )}
               <Pressable onPress={() => { setMode(isSignIn ? 'signUp' : 'signIn'); setAuthError(null); }}>
                 <Text style={styles.modeToggle}>
                   {isSignIn ? "Need an account? " : 'Already have an account? '}
@@ -216,6 +239,35 @@ export default function SignUp() {
               gamerId={gamerId}
               setGamerId={setGamerId}
             />
+          </View>
+        )}
+
+        {phase === 'forgotPassword' && (
+          <View style={{ gap: 22, paddingTop: 12 }}>
+            <Text style={styles.heading}>Reset your password</Text>
+            <Text style={styles.bodyCopy}>Enter your account email and we'll send you a link to set a new password.</Text>
+            <TextInput
+              value={email}
+              onChangeText={setEmail}
+              placeholder="you@email.ie"
+              autoCapitalize="none"
+              keyboardType="email-address"
+              placeholderTextColor={color.fillPlaceholder}
+              style={styles.bareInput}
+            />
+            <Pressable onPress={() => { setPhase('form'); setAuthError(null); }}>
+              <Text style={styles.modeToggle}>Back to sign in</Text>
+            </Pressable>
+          </View>
+        )}
+
+        {phase === 'resetSent' && (
+          <View style={{ gap: 22, paddingTop: 24 }}>
+            <Text style={styles.heading}>Check your email</Text>
+            <Text style={styles.bodyCopy}>
+              We sent a password reset link to <Text style={{ color: color.textPrimary }}>{email}</Text>. Open it
+              to set a new password.
+            </Text>
           </View>
         )}
 
@@ -315,7 +367,37 @@ export default function SignUp() {
   );
 }
 
-function primaryFor(phase: Phase, ready: boolean, isSignIn: boolean, linkReady: boolean) {
+function primaryFor(phase: Phase, ready: boolean, isSignIn: boolean, linkReady: boolean, emailValid: boolean) {
+  if (phase === 'forgotPassword') {
+    return emailValid
+      ? {
+          label: 'Send reset link',
+          bg: color.textPrimary,
+          fg: color.base,
+          border: color.textPrimary,
+          hoverBg: color.fillHover,
+          activeBg: color.fillActive,
+          disabled: false,
+        }
+      : {
+          label: 'Send reset link',
+          bg: color.fillMuted,
+          fg: 'rgba(242,241,236,0.35)',
+          border: color.fillMutedBorder,
+          disabled: true,
+        };
+  }
+  if (phase === 'resetSent') {
+    return {
+      label: 'Back to sign in',
+      bg: color.textPrimary,
+      fg: color.base,
+      border: color.textPrimary,
+      hoverBg: color.fillHover,
+      activeBg: color.fillActive,
+      disabled: false,
+    };
+  }
   if (phase === 'verifying') {
     return {
       label: 'Verifying…',
@@ -473,6 +555,7 @@ const styles = StyleSheet.create({
   },
   tagline: { fontFamily: fontFamily.interRegular, fontSize: 14, color: color.textMuted },
   modeToggle: { fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted },
+  forgotLabel: { fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted, textAlign: 'right' },
   eyebrow: {
     fontFamily: fontFamily.interSemiBold,
     fontSize: 11,
