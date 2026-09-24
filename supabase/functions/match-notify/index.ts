@@ -8,8 +8,17 @@
 // lock_soon additionally excludes anyone who muted that specific game
 // (screen 07's per-game bell — notification_prefs).
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import webpush from "npm:web-push@3";
 
 type NotifyBody = { type: "new_match" | "lock_soon"; gameId: string };
+
+const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY");
+const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY");
+const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT");
+const webPushReady = !!(VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY && VAPID_SUBJECT);
+if (webPushReady) {
+  webpush.setVapidDetails(VAPID_SUBJECT!, VAPID_PUBLIC_KEY!, VAPID_PRIVATE_KEY!);
+}
 
 Deno.serve(async (req: Request) => {
   let body: NotifyBody;
@@ -67,47 +76,104 @@ Deno.serve(async (req: Request) => {
     return new Response(JSON.stringify({ ok: true, recipients: 0 }));
   }
 
-  const { data: tokens } = await supabase.from("push_tokens").select("token").in("profile_id", profileIds);
-  const pushTokens = [...new Set((tokens ?? []).map((t) => t.token))];
-  if (pushTokens.length === 0) {
-    return new Response(JSON.stringify({ ok: true, recipients: profileIds.length, tokens: 0 }));
-  }
+  const { data: tokenRows } = await supabase.from("push_tokens").select("token, platform").in("profile_id", profileIds);
+  const expoTokens = [...new Set((tokenRows ?? []).filter((t) => t.platform !== "web").map((t) => t.token))];
+  const webTokens = [...new Set((tokenRows ?? []).filter((t) => t.platform === "web").map((t) => t.token))];
 
   const matchLabel = `Match ${game.round_number} · Game ${game.game_number}`;
-  const deepLinkUrl = `beacon://games/${game.id}/lobby`;
 
+  // Plain in-app paths, not a beacon:// scheme — native's deep-link handler
+  // (useNotificationDeepLinks) already strips a beacon:// prefix if one is
+  // there, so a bare path passes through unchanged, and the web service
+  // worker's notificationclick handler uses the same path directly.
   const { title, message, data } =
     body.type === "new_match"
       ? {
           title: "New game scheduled",
           message: `${leagueName} added ${matchLabel} — ${when}${game.map ? `, ${game.map}` : ""}. 20-team lobby.`,
-          data: { url: `beacon://games` },
+          data: { url: `/games` },
         }
       : {
           title: "Lobby opens in 10 minutes",
           message: `${matchLabel} · ${leagueName}. Lineups are locked as of now. Tap to open your lobby code.`,
-          data: { url: deepLinkUrl },
+          data: { url: `/games/${game.id}/lobby` },
         };
 
-  // Expo Push API accepts up to 100 messages per request.
-  const chunks: string[][] = [];
-  for (let i = 0; i < pushTokens.length; i += 100) chunks.push(pushTokens.slice(i, i + 100));
-
   let sent = 0;
-  for (const chunk of chunks) {
-    const messages = chunk.map((to) => ({ to, title, body: message, data, sound: "default" }));
-    try {
-      const res = await fetch("https://exp.host/--/api/v2/push/send", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Accept: "application/json" },
-        body: JSON.stringify(messages),
-      });
-      if (res.ok) sent += chunk.length;
-      else console.error("match-notify: Expo push API returned", res.status, await res.text());
-    } catch (err) {
-      console.error("match-notify: Expo push API request failed", err);
+  const staleTokens: string[] = [];
+  const ticketErrors: { token: string; status: string; message?: string; error?: string }[] = [];
+
+  // Expo Push API accepts up to 100 messages per request. Its response has
+  // one "ticket" per message — the outer HTTP call can be 200 OK while an
+  // individual ticket still reports a real delivery failure (a stale
+  // token, misconfigured credentials, etc.), so those tickets are what
+  // actually tells us whether anything reached a device.
+  if (expoTokens.length > 0) {
+    const chunks: string[][] = [];
+    for (let i = 0; i < expoTokens.length; i += 100) chunks.push(expoTokens.slice(i, i + 100));
+
+    for (const chunk of chunks) {
+      const messages = chunk.map((to) => ({ to, title, body: message, data, sound: "default" }));
+      try {
+        const res = await fetch("https://exp.host/--/api/v2/push/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify(messages),
+        });
+        const payload = await res.json().catch(() => null);
+        if (!res.ok || !payload?.data) {
+          console.error("match-notify: Expo push API returned", res.status, JSON.stringify(payload));
+          continue;
+        }
+        payload.data.forEach((ticket: { status: string; message?: string; details?: { error?: string } }, i: number) => {
+          const token = chunk[i];
+          if (ticket.status === "ok") {
+            sent += 1;
+          } else {
+            console.error("match-notify: delivery ticket failed", token, JSON.stringify(ticket));
+            ticketErrors.push({ token, status: ticket.status, message: ticket.message, error: ticket.details?.error });
+            if (ticket.details?.error === "DeviceNotRegistered") staleTokens.push(token);
+          }
+        });
+      } catch (err) {
+        console.error("match-notify: Expo push API request failed", err);
+      }
     }
   }
 
-  return new Response(JSON.stringify({ ok: true, recipients: profileIds.length, tokens: pushTokens.length, sent }));
+  // Web subscriptions go through the Web Push protocol directly (VAPID-
+  // signed, payload encrypted client-library-side) rather than Expo's API
+  // — each push_tokens row for platform 'web' holds a JSON-stringified
+  // PushSubscription from the browser's own Push API.
+  if (webTokens.length > 0 && webPushReady) {
+    const payload = JSON.stringify({ title, body: message, data });
+    for (const token of webTokens) {
+      try {
+        const subscription = JSON.parse(token);
+        await webpush.sendNotification(subscription, payload);
+        sent += 1;
+      } catch (err: any) {
+        const statusCode = err?.statusCode;
+        console.error("match-notify: web push failed", statusCode, err?.body ?? err);
+        ticketErrors.push({ token, status: "error", message: err?.body, error: String(statusCode ?? err) });
+        if (statusCode === 404 || statusCode === 410) staleTokens.push(token);
+      }
+    }
+  } else if (webTokens.length > 0 && !webPushReady) {
+    console.error("match-notify: web push subscriptions exist but VAPID secrets aren't configured — skipping.");
+  }
+
+  if (staleTokens.length > 0) {
+    await supabase.from("push_tokens").delete().in("token", staleTokens);
+  }
+
+  return new Response(
+    JSON.stringify({
+      ok: true,
+      recipients: profileIds.length,
+      tokens: expoTokens.length + webTokens.length,
+      sent,
+      ticketErrors,
+    }),
+  );
 });

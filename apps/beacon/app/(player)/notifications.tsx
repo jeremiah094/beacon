@@ -6,7 +6,7 @@ import * as Notifications from 'expo-notifications';
 import { Diamond } from '../../components/Diamond';
 import { color, fontFamily } from '../../theme/tokens';
 import { useSession } from '../../lib/hooks/useSession';
-import { usePushRegistration } from '../../lib/hooks/usePushRegistration';
+import { registerWebPush, usePushRegistration } from '../../lib/hooks/usePushRegistration';
 
 const isWeb = Platform.OS === 'web';
 
@@ -18,20 +18,24 @@ const isWeb = Platform.OS === 'web';
 // notification content lives in supabase/functions/match-notify.
 export default function NotificationSettings() {
   const { userId } = useSession();
-  const [status, setStatus] = useState<Notifications.PermissionStatus | null>(null);
+  const [status, setStatus] = useState<NotificationPermission | Notifications.PermissionStatus | null>(null);
 
   usePushRegistration(userId);
 
   useEffect(() => {
-    // usePushRegistration already no-ops on web (no VAPID/service-worker
-    // setup yet — see that hook). Skip the permission check here too, so
-    // this screen doesn't prompt for a browser permission that nothing
-    // is actually listening on.
-    if (isWeb) return;
+    if (isWeb) {
+      if (typeof Notification !== 'undefined') setStatus(Notification.permission);
+      return;
+    }
     Notifications.getPermissionsAsync().then((r) => setStatus(r.status));
   }, []);
 
   async function handleEnable() {
+    if (isWeb) {
+      if (userId) await registerWebPush(userId);
+      if (typeof Notification !== 'undefined') setStatus(Notification.permission);
+      return;
+    }
     const r = await Notifications.requestPermissionsAsync();
     setStatus(r.status);
   }
@@ -51,27 +55,21 @@ export default function NotificationSettings() {
 
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.statusBox}>
-          {isWeb ? (
-            <View style={styles.statusRow}>
-              <View style={[styles.statusDot, { backgroundColor: color.textMuted }]} />
-              <Text style={styles.statusText}>Push notifications need the Beacon mobile app — not yet supported in the browser</Text>
-            </View>
-          ) : (
-            <>
-              <View style={styles.statusRow}>
-                <View style={[styles.statusDot, { backgroundColor: granted ? color.verified : color.textMuted }]} />
-                <Text style={styles.statusText}>{granted ? 'Push notifications are on' : 'Push notifications are off'}</Text>
-              </View>
-              {!granted && (
-                <Pressable onPress={handleEnable}>
-                  {({ pressed, hovered }: any) => (
-                    <View style={[styles.enableButton, { backgroundColor: pressed ? color.fillActive : hovered ? color.fillHover : color.textPrimary }]}>
-                      <Text style={styles.enableLabel}>Enable notifications</Text>
-                    </View>
-                  )}
-                </Pressable>
+          <View style={styles.statusRow}>
+            <View style={[styles.statusDot, { backgroundColor: granted ? color.verified : color.textMuted }]} />
+            <Text style={styles.statusText}>{granted ? 'Push notifications are on' : 'Push notifications are off'}</Text>
+          </View>
+          {!granted && (
+            <Pressable onPress={handleEnable}>
+              {({ pressed, hovered }: any) => (
+                <View style={[styles.enableButton, { backgroundColor: pressed ? color.fillActive : hovered ? color.fillHover : color.textPrimary }]}>
+                  <Text style={styles.enableLabel}>Enable notifications</Text>
+                </View>
               )}
-            </>
+            </Pressable>
+          )}
+          {isWeb && (
+            <Text style={styles.webHint}>Your browser will ask to allow notifications from beaconproject.eu.</Text>
           )}
         </View>
 
@@ -133,6 +131,7 @@ const styles = StyleSheet.create({
   statusText: { flex: 1, fontFamily: fontFamily.interSemiBold, fontSize: 14, lineHeight: 19, color: color.textPrimary },
   enableButton: { height: 44, alignItems: 'center', justifyContent: 'center' },
   enableLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 14, color: color.base },
+  webHint: { fontFamily: fontFamily.interRegular, fontSize: 12, lineHeight: 17, color: color.textMuted },
   exampleCard: { flexDirection: 'row', gap: 12, borderWidth: 1, backgroundColor: color.panel, padding: 15, paddingHorizontal: 16 },
   exampleIcon: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   exampleHeaderRow: { flexDirection: 'row' },
