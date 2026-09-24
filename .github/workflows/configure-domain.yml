@@ -43,29 +43,24 @@ jobs:
             npx eas-cli --version 2>&1 || true
             echo '```'
             echo ""
-            echo "### eas-cli domains --help"
+            echo "### eas-cli --help (full command list)"
             echo '```'
-            npx eas-cli domains --help 2>&1 || true
-            echo '```'
-            echo ""
-            echo "### eas-cli domains:list --help"
-            echo '```'
-            npx eas-cli domains:list --help 2>&1 || true
+            npx eas-cli --help --all 2>&1 || true
             echo '```'
             echo ""
-            echo "### eas-cli domains:list"
+            echo "### commands matching domain/hosting/alias/dns"
             echo '```'
-            npx eas-cli domains:list --non-interactive 2>&1 || true
-            echo '```'
-            echo ""
-            echo "### eas-cli domains:configure --help"
-            echo '```'
-            npx eas-cli domains:configure --help 2>&1 || true
+            npx eas-cli --help --all 2>&1 | grep -iE "domain|hosting|alias|dns" || echo "(no matches)"
             echo '```'
             echo ""
-            echo "### eas-cli domains:assign --help"
+            echo "### eas-cli deploy --help"
             echo '```'
-            npx eas-cli domains:assign --help 2>&1 || true
+            npx eas-cli deploy --help 2>&1 || true
+            echo '```'
+            echo ""
+            echo "### eas-cli project:info --help"
+            echo '```'
+            npx eas-cli project:info --help 2>&1 || true
             echo '```'
           } >> "$OUT"
 
