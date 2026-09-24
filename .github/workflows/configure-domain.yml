@@ -99,7 +99,7 @@ jobs:
 
       - name: Commit domain-setup.md
         run: |
-          if ! git diff --quiet -- docs/domain-setup.md; then
+          if [ -n "$(git status --porcelain -- docs/domain-setup.md)" ]; then
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add docs/domain-setup.md
