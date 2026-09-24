@@ -105,6 +105,9 @@ export function useCreateTeam(userId: string | undefined) {
         .insert({ name, tag: tag || null, captain_id: userId })
         .select('id')
         .single();
+      if (teamError?.code === '23505') {
+        throw new Error(`A team called "${name}" already exists — search for it and ask to join instead of creating a duplicate.`);
+      }
       if (teamError || !team) throw teamError ?? new Error('Failed to create team');
 
       // The on_team_created trigger adds the captain to team_members
@@ -143,6 +146,60 @@ export function useRegisterTeamForLeague(userId: string | undefined) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['myTeams', userId] });
       queryClient.invalidateQueries({ queryKey: ['leagues'] });
+    },
+  });
+}
+
+export type TeamSearchResult = { id: string; name: string; tag: string | null; initials: string };
+
+/** teams_select_search (RLS) intentionally opens SELECT on teams to every
+ * authenticated user — name/tag aren't sensitive, and finding a team you
+ * don't already share a league or membership with is the whole point of
+ * search-to-join. */
+export function useSearchTeams(query: string, excludeTeamIds: string[]) {
+  const trimmed = query.trim();
+  return useQuery({
+    queryKey: ['teamSearch', trimmed],
+    queryFn: async (): Promise<TeamSearchResult[]> => {
+      const { data, error } = await supabase.from('teams').select('id, name, tag').ilike('name', `%${trimmed}%`).order('name').limit(20);
+      if (error) throw error;
+      return (data ?? [])
+        .filter((t) => !excludeTeamIds.includes(t.id))
+        .map((t) => ({ id: t.id, name: t.name, tag: t.tag, initials: (t.tag || t.name).slice(0, 2).toUpperCase() }));
+    },
+    enabled: trimmed.length >= 2,
+  });
+}
+
+/** Team IDs this player already has a pending join request against —
+ * lets the search screen show "Requested" instead of "Join" so they
+ * can't spam the same team (team_join_requests_one_pending also
+ * enforces this server-side either way). */
+export function useMyPendingJoinRequests(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['myJoinRequests', userId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('team_join_requests').select('team_id').eq('profile_id', userId as string).eq('status', 'pending');
+      if (error) throw error;
+      return (data ?? []).map((r) => r.team_id);
+    },
+    enabled: !!userId,
+  });
+}
+
+export function useRequestToJoinTeam(userId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (teamId: string) => {
+      if (!userId) throw new Error('Not signed in');
+      const { error } = await supabase.from('team_join_requests').insert({ team_id: teamId, profile_id: userId });
+      if (error?.code === '23505') {
+        throw new Error("You've already asked to join this team — waiting on the captain to respond.");
+      }
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myJoinRequests', userId] });
     },
   });
 }

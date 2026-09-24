@@ -16,11 +16,11 @@ import { useLeagueName } from '../../../lib/api/leagues';
 export default function MyTeams() {
   const { userId } = useSession();
   const { data: teams, isLoading } = useMyTeams(userId);
-  const { joinLeagueId } = useLocalSearchParams<{ joinLeagueId?: string }>();
+  const { joinLeagueId, create } = useLocalSearchParams<{ joinLeagueId?: string; create?: string }>();
   const { data: joinLeagueName } = useLeagueName(joinLeagueId);
   const list = teams ?? [];
   const { activeTeamId, setActiveTeam } = useActiveTeam(list.map((t) => t.id));
-  const [showCreate, setShowCreate] = useState(false);
+  const [showCreate, setShowCreate] = useState(!!create);
   const [name, setName] = useState('');
   const [tag, setTag] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
@@ -46,6 +46,16 @@ export default function MyTeams() {
       const message = (err as { message?: string } | null)?.message;
       setRegisterError(message || 'Could not register the team. Try again.');
     }
+  }
+
+  // Search-first when there's no league-registration context (the normal
+  // case) — creating straight away is how the "Cork onions" duplicate-team
+  // problem happened in the first place. Registering for a league is a
+  // separate concern (picking/creating a team to register, not finding one
+  // to join as a member), so that flow keeps going straight to create.
+  function openTeamEntry() {
+    if (joinLeagueId) setShowCreate(true);
+    else router.push('/(player)/teams/search' as any);
   }
 
   async function handleCreate() {
@@ -148,7 +158,7 @@ export default function MyTeams() {
         )}
 
         {!atLimit && !displayCreate && (
-          <Pressable onPress={() => setShowCreate(true)}>
+          <Pressable onPress={openTeamEntry}>
             {({ hovered }: any) => (
               <View style={[styles.emptySlot, hovered && { borderColor: 'rgba(242,241,236,0.45)' }]}>
                 <Text style={styles.emptySlotTitle}>EMPTY SLOT</Text>
@@ -220,7 +230,7 @@ export default function MyTeams() {
             </Text>
           </View>
         )}
-        <Pressable onPress={() => !atLimit && setShowCreate(true)} disabled={atLimit}>
+        <Pressable onPress={() => !atLimit && openTeamEntry()} disabled={atLimit}>
           {({ pressed, hovered }: any) => (
             <CornerCut
               cut={10}
@@ -230,7 +240,7 @@ export default function MyTeams() {
             >
               <View style={styles.primaryContent}>
                 <Text style={[styles.primaryLabel, { color: atLimit ? 'rgba(242,241,236,0.35)' : color.base }]}>
-                  Join or create a team
+                  {joinLeagueId ? 'Join or create a team' : 'Find or create a team'}
                 </Text>
               </View>
             </CornerCut>

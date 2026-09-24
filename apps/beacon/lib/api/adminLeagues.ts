@@ -80,8 +80,11 @@ export function useSaveLeague(leagueId: string | undefined, userId: string | und
         ...(publish ? { status: 'published' } : {}),
       };
 
+      const duplicateMessage = `A league named "${form.name}"${form.seasonLabel ? ` for ${form.seasonLabel}` : ''} already exists.`;
+
       if (leagueId) {
         const { error } = await supabase.from('leagues').update(payload).eq('id', leagueId);
+        if (error?.code === '23505') throw new Error(duplicateMessage);
         if (error) throw error;
         return leagueId;
       }
@@ -91,6 +94,7 @@ export function useSaveLeague(leagueId: string | undefined, userId: string | und
         .insert({ ...payload, status: publish ? 'published' : 'draft', created_by: userId })
         .select('id')
         .single();
+      if (error?.code === '23505') throw new Error(duplicateMessage);
       if (error || !data) throw error ?? new Error('Failed to create league');
       return data.id as string;
     },

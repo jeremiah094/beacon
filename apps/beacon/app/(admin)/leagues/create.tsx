@@ -39,6 +39,7 @@ export default function CreateOrEditLeague() {
   const [entryRules, setEntryRules] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (existing && !loaded) {
@@ -91,11 +92,17 @@ export default function CreateOrEditLeague() {
   else if (missing.length > 1) blockedReason = `Publish needs ${missing.slice(0, -1).join(', ')} and ${missing[missing.length - 1]}.`;
 
   async function handleSave(publish: boolean) {
-    const id = await saveLeague.mutateAsync({
-      form: { name, seasonLabel, region, teamsPerLobby: teams, seasonStart: parseDate(startDate), seasonEnd: parseDate(endDate), entryRules },
-      publish,
-    });
-    if (!leagueId) router.replace({ pathname: '/(admin)/leagues/create', params: { leagueId: id } } as any);
+    setSaveError(null);
+    try {
+      const id = await saveLeague.mutateAsync({
+        form: { name, seasonLabel, region, teamsPerLobby: teams, seasonStart: parseDate(startDate), seasonEnd: parseDate(endDate), entryRules },
+        publish,
+      });
+      if (!leagueId) router.replace({ pathname: '/(admin)/leagues/create', params: { leagueId: id } } as any);
+    } catch (err) {
+      const message = (err as { message?: string } | null)?.message;
+      setSaveError(message || 'Could not save the league. Try again.');
+    }
   }
 
   return (
@@ -186,6 +193,13 @@ export default function CreateOrEditLeague() {
         </>
       }
     >
+      {saveError && (
+        <View style={styles.noteRow}>
+          <View style={styles.noteBar} />
+          <Text style={styles.noteText}>{saveError}</Text>
+        </View>
+      )}
+
       <View style={styles.fieldRow2}>
         <Field label="League name">
           <TextInput value={name} onChangeText={setName} placeholder="e.g. Beacon Division Two" placeholderTextColor={color.fillPlaceholder} style={styles.input} />

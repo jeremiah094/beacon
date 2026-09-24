@@ -8,6 +8,7 @@ import { Spinner } from '../../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../../theme/tokens';
 import { useSession } from '../../../../lib/hooks/useSession';
 import { RosterPlayer, useSetLineup, useTeamLineup } from '../../../../lib/api/lineup';
+import { useDecideJoinRequest, usePendingJoinRequests } from '../../../../lib/api/teamJoinRequests';
 
 // Reference: Beacon 05 Roster Lineup.dc.html
 export default function RosterLineup() {
@@ -15,10 +16,13 @@ export default function RosterLineup() {
   const { userId } = useSession();
   const { data, isLoading } = useTeamLineup(teamId);
   const setLineup = useSetLineup(teamId);
+  const { data: pendingRequests } = usePendingJoinRequests(teamId);
+  const decideJoinRequest = useDecideJoinRequest(teamId);
 
   const [selected, setSelected] = useState<string[]>([]);
   const [initialized, setInitialized] = useState(false);
   const [showError, setShowError] = useState(false);
+  const [joinRequestError, setJoinRequestError] = useState<string | null>(null);
 
   useEffect(() => {
     if (data && !initialized) {
@@ -48,6 +52,18 @@ export default function RosterLineup() {
   const rosterFull = data.roster.length >= 5;
   const isConfirmed = !!data.confirmedAt && exact;
   const hasGame = !!data.gameId;
+  const isCaptain = data.roster.some((p) => p.profileId === userId && p.role === 'captain');
+
+  async function handleDecideJoinRequest(requestId: string, profileId: string, approve: boolean) {
+    if (!userId) return;
+    setJoinRequestError(null);
+    try {
+      await decideJoinRequest.mutateAsync({ requestId, profileId, approve, captainId: userId });
+    } catch (err) {
+      const message = (err as { message?: string } | null)?.message;
+      setJoinRequestError(message || 'Could not process that request. Try again.');
+    }
+  }
 
   function toggle(profileId: string) {
     setSelected((prev) => (prev.includes(profileId) ? prev.filter((id) => id !== profileId) : [...prev, profileId]));
@@ -142,6 +158,33 @@ export default function RosterLineup() {
           <View style={styles.emptySlot}>
             <Text style={styles.emptySlotTitle}>EMPTY ROSTER SLOT</Text>
             <Text style={styles.emptySlotCopy}>Room for {5 - data.roster.length} more</Text>
+          </View>
+        )}
+
+        {isCaptain && (pendingRequests ?? []).length > 0 && (
+          <View style={styles.joinRequestsBox}>
+            <Text style={styles.sectionLabel}>Requests to join</Text>
+            {pendingRequests!.map((r) => (
+              <View key={r.id} style={styles.joinRequestRow}>
+                <Text style={styles.joinRequestName} numberOfLines={1}>{r.name}</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Pressable onPress={() => handleDecideJoinRequest(r.id, r.profileId, false)} disabled={decideJoinRequest.isPending}>
+                    <Text style={styles.joinRequestReject}>Decline</Text>
+                  </Pressable>
+                  <Pressable onPress={() => handleDecideJoinRequest(r.id, r.profileId, true)} disabled={rosterFull || decideJoinRequest.isPending}>
+                    <View style={[styles.joinRequestApprove, rosterFull && { opacity: 0.4 }]}>
+                      <Text style={styles.joinRequestApproveLabel}>Approve</Text>
+                    </View>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+            {joinRequestError && (
+              <View style={styles.noteRow}>
+                <View style={styles.noteBar} />
+                <Text style={styles.noteText}>{joinRequestError}</Text>
+              </View>
+            )}
           </View>
         )}
 
@@ -338,6 +381,12 @@ const styles = StyleSheet.create({
   emptySlotCopy: { fontFamily: fontFamily.interRegular, fontSize: 11, color: color.textMuted },
   inviteButton: { height: 44, borderWidth: 1, borderColor: color.hairlineStrong, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
   inviteLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 14, color: color.textPrimary },
+  joinRequestsBox: { gap: 10, borderWidth: 1, borderColor: color.hairline, backgroundColor: color.panel, padding: 14 },
+  joinRequestRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  joinRequestName: { flex: 1, minWidth: 0, fontFamily: fontFamily.interSemiBold, fontSize: 14, color: color.textPrimary },
+  joinRequestReject: { fontFamily: fontFamily.interMedium, fontSize: 12, color: color.textMuted, alignSelf: 'center' },
+  joinRequestApprove: { height: 32, paddingHorizontal: 12, backgroundColor: color.verifiedTint, borderWidth: 1, borderColor: color.verifiedTintBorder, alignItems: 'center', justifyContent: 'center' },
+  joinRequestApproveLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.verified },
   noteRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   noteBar: { width: 3, alignSelf: 'stretch', backgroundColor: 'rgba(242,241,236,0.35)' },
   noteText: { flex: 1, fontFamily: fontFamily.interRegular, fontSize: 12, lineHeight: 17, color: color.textMuted },
