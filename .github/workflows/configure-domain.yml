@@ -4,11 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "discover (safe, read-only eas-cli calls) or configure (attempt to add/assign beaconproject.eu + www)"
+        description: "discover (eas-cli exploration) or verify (check DNS + HTTPS for beaconproject.eu)"
         type: choice
         options:
           - discover
-          - configure
+          - verify
         default: discover
 
 permissions:
@@ -64,31 +64,33 @@ jobs:
             echo '```'
           } >> "$OUT"
 
-      - name: Configure beaconproject.eu + www
-        if: ${{ github.event.inputs.mode == 'configure' }}
-        working-directory: apps/beacon
-        env:
-          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+      - name: Verify DNS + HTTPS for beaconproject.eu
+        if: ${{ github.event.inputs.mode == 'verify' }}
         run: |
-          OUT=../../docs/domain-setup.md
-          mkdir -p ../../docs
+          OUT=docs/domain-setup.md
+          mkdir -p docs
           {
             echo ""
-            echo "## Configure run — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "## Verify run — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo ""
-            echo "### configure beaconproject.eu"
+            echo "### A record: beaconproject.eu (expect 172.66.0.241)"
             echo '```'
-            npx eas-cli domains:configure --domain beaconproject.eu --non-interactive 2>&1 || true
-            echo '```'
-            echo ""
-            echo "### configure www.beaconproject.eu"
-            echo '```'
-            npx eas-cli domains:configure --domain www.beaconproject.eu --non-interactive 2>&1 || true
+            dig +short A beaconproject.eu 2>&1 || true
             echo '```'
             echo ""
-            echo "### domains:list after configure"
+            echo "### TXT record: _cf-custom-hostname.beaconproject.eu"
             echo '```'
-            npx eas-cli domains:list --non-interactive 2>&1 || true
+            dig +short TXT _cf-custom-hostname.beaconproject.eu 2>&1 || true
+            echo '```'
+            echo ""
+            echo "### CNAME record: _acme-challenge.beaconproject.eu"
+            echo '```'
+            dig +short CNAME _acme-challenge.beaconproject.eu 2>&1 || true
+            echo '```'
+            echo ""
+            echo "### HTTPS check: https://beaconproject.eu"
+            echo '```'
+            curl -sS -o /dev/null -w "HTTP %{http_code} in %{time_total}s (final URL: %{url_effective})\n" --max-time 20 https://beaconproject.eu 2>&1 || true
             echo '```'
           } >> "$OUT"
 
