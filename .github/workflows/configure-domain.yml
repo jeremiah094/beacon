@@ -92,6 +92,21 @@ jobs:
             echo '```'
             curl -sS -o /dev/null -w "HTTP %{http_code} in %{time_total}s (final URL: %{url_effective})\n" --max-time 20 https://beaconproject.eu 2>&1 || true
             echo '```'
+            echo ""
+            echo "### A/CNAME record: www.beaconproject.eu"
+            echo '```'
+            dig +short www.beaconproject.eu 2>&1 || true
+            echo '```'
+            echo ""
+            echo "### HTTPS check: https://www.beaconproject.eu"
+            echo '```'
+            curl -sS -o /dev/null -w "HTTP %{http_code} in %{time_total}s (final URL: %{url_effective})\n" --max-time 20 https://www.beaconproject.eu 2>&1 || true
+            echo '```'
+            echo ""
+            echo "### verbose TLS/HTTP detail for www (to see the actual failure if any)"
+            echo '```'
+            curl -sSv --max-time 20 https://www.beaconproject.eu -o /dev/null 2>&1 | tail -40 || true
+            echo '```'
           } >> "$OUT"
 
       - name: Commit domain-setup.md
