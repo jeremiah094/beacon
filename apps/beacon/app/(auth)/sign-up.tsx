@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import { AntDesign } from '@expo/vector-icons';
 import { Diamond } from '../../components/Diamond';
 import { Logo } from '../../components/Logo';
 import { HudPanel } from '../../components/Panel';
@@ -85,6 +86,21 @@ export default function SignUp() {
     } else {
       setPhase('confirmEmail');
     }
+  }
+
+  // Discord OAuth only redirects usefully on web today (same constraint as
+  // the email-confirmation and password-reset links elsewhere in this
+  // file — detectSessionInUrl in lib/supabase.ts is only turned on for
+  // web, so there's nothing native-side to pick the session back up).
+  // Discord creates the account automatically on first sign-in, so this
+  // one button covers both sign-in and sign-up.
+  async function handleDiscordSignIn() {
+    setAuthError(null);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'discord',
+      options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined },
+    });
+    if (error) setAuthError(error.message);
   }
 
   async function sendResetEmail() {
@@ -211,6 +227,24 @@ export default function SignUp() {
                 </Text>
               </Pressable>
             </View>
+
+            {Platform.OS === 'web' && (
+              <View style={{ gap: 16 }}>
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerLabel}>OR</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+                <Pressable onPress={handleDiscordSignIn}>
+                  {({ pressed, hovered }: any) => (
+                    <View style={[styles.discordButton, (pressed || hovered) && { backgroundColor: color.fillHover }]}>
+                      <AntDesign name="discord" size={18} color={color.textPrimary} />
+                      <Text style={styles.discordButtonLabel}>Continue with Discord</Text>
+                    </View>
+                  )}
+                </Pressable>
+              </View>
+            )}
 
             {!isSignIn && (
               <GamingIdPanel
@@ -556,6 +590,19 @@ const styles = StyleSheet.create({
   tagline: { fontFamily: fontFamily.interRegular, fontSize: 14, color: color.textMuted },
   modeToggle: { fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted },
   forgotLabel: { fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted, textAlign: 'right' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: color.hairline },
+  dividerLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.1 * 10, color: color.textMuted },
+  discordButton: {
+    height: 50,
+    borderWidth: 1,
+    borderColor: color.hairlineInput,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  discordButtonLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 14, color: color.textPrimary },
   eyebrow: {
     fontFamily: fontFamily.interSemiBold,
     fontSize: 11,
