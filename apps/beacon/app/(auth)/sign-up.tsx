@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { AntDesign } from '@expo/vector-icons';
 import { Diamond } from '../../components/Diamond';
 import { Logo } from '../../components/Logo';
@@ -88,19 +90,68 @@ export default function SignUp() {
     }
   }
 
-  // Discord OAuth only redirects usefully on web today (same constraint as
-  // the email-confirmation and password-reset links elsewhere in this
-  // file — detectSessionInUrl in lib/supabase.ts is only turned on for
-  // web, so there's nothing native-side to pick the session back up).
+  // Shared by the email/password sign-in branch below and the native
+  // Discord flow — both land here with nothing more than a userId once a
+  // session exists, whatever got them there.
+  async function routeAfterSignIn(userId: string) {
+    const { data: profile } = await supabase.from('profiles').select('apex_verified_at, is_admin').eq('id', userId).maybeSingle();
+    if (profile?.is_admin) {
+      router.replace('/(admin)/leagues');
+    } else if (profile?.apex_verified_at) {
+      router.replace('/(player)/stats');
+    } else {
+      // Confirmed and signed in, but never finished (or skipped) linking
+      // a gaming ID — offer it again, still skippable from here too.
+      setPhase('linking');
+    }
+  }
+
   // Discord creates the account automatically on first sign-in, so this
-  // one button covers both sign-in and sign-up.
+  // one button covers both sign-in and sign-up. Web does a full browser
+  // redirect — detectSessionInUrl (lib/supabase.ts) picks the session up
+  // once Supabase redirects back, same as the email-confirmation and
+  // password-reset links elsewhere in this file. Native has no page URL
+  // for that to work, so it opens an in-app browser session instead and
+  // hands the returned tokens to the client directly.
   async function handleDiscordSignIn() {
     setAuthError(null);
-    const { error } = await supabase.auth.signInWithOAuth({
+    if (Platform.OS === 'web') {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'discord',
+        options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined },
+      });
+      if (error) setAuthError(error.message);
+      return;
+    }
+
+    const redirectTo = Linking.createURL('/');
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'discord',
-      options: { redirectTo: typeof window !== 'undefined' ? window.location.origin : undefined },
+      options: { redirectTo, skipBrowserRedirect: true },
     });
-    if (error) setAuthError(error.message);
+    if (error || !data.url) {
+      setAuthError(error?.message ?? 'Could not start Discord sign-in.');
+      return;
+    }
+
+    const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+    if (result.type !== 'success' || !result.url) return; // cancelled — not an error
+
+    const hashIndex = result.url.indexOf('#');
+    const params = new URLSearchParams(hashIndex === -1 ? '' : result.url.slice(hashIndex + 1));
+    const access_token = params.get('access_token');
+    const refresh_token = params.get('refresh_token');
+    if (!access_token || !refresh_token) {
+      setAuthError("Discord sign-in didn't complete — try again.");
+      return;
+    }
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.setSession({ access_token, refresh_token });
+    if (sessionError || !sessionData.session) {
+      setAuthError(sessionError?.message ?? "Discord sign-in didn't complete — try again.");
+      return;
+    }
+    await routeAfterSignIn(sessionData.session.user.id);
   }
 
   async function sendResetEmail() {
@@ -129,19 +180,7 @@ export default function SignUp() {
         setAuthError(error.message);
         return;
       }
-      const userId = data.user?.id;
-      const { data: profile } = userId
-        ? await supabase.from('profiles').select('apex_verified_at, is_admin').eq('id', userId).maybeSingle()
-        : { data: null };
-      if (profile?.is_admin) {
-        router.replace('/(admin)/leagues');
-      } else if (profile?.apex_verified_at) {
-        router.replace('/(player)/stats');
-      } else {
-        // Confirmed and signed in, but never finished (or skipped) linking
-        // a gaming ID — offer it again, still skippable from here too.
-        setPhase('linking');
-      }
+      if (data.user?.id) await routeAfterSignIn(data.user.id);
     } else if (phase === 'form') {
       if (!ready) return;
       await submitAccount(linkReady);
@@ -228,23 +267,21 @@ export default function SignUp() {
               </Pressable>
             </View>
 
-            {Platform.OS === 'web' && (
-              <View style={{ gap: 16 }}>
-                <View style={styles.dividerRow}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerLabel}>OR</Text>
-                  <View style={styles.dividerLine} />
-                </View>
-                <Pressable onPress={handleDiscordSignIn}>
-                  {({ pressed, hovered }: any) => (
-                    <View style={[styles.discordButton, (pressed || hovered) && { backgroundColor: color.fillHover }]}>
-                      <AntDesign name="discord" size={18} color={color.textPrimary} />
-                      <Text style={styles.discordButtonLabel}>Continue with Discord</Text>
-                    </View>
-                  )}
-                </Pressable>
+            <View style={{ gap: 16 }}>
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerLabel}>OR</Text>
+                <View style={styles.dividerLine} />
               </View>
-            )}
+              <Pressable onPress={handleDiscordSignIn}>
+                {({ pressed, hovered }: any) => (
+                  <View style={[styles.discordButton, (pressed || hovered) && { backgroundColor: color.fillHover }]}>
+                    <AntDesign name="discord" size={18} color={color.textPrimary} />
+                    <Text style={styles.discordButtonLabel}>Continue with Discord</Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
 
             {!isSignIn && (
               <GamingIdPanel
