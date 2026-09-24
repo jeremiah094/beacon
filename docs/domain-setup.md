@@ -320,3 +320,80 @@ HTTP 308 in 0.148793s (final URL: https://www.beaconproject.eu/)
 < 
 * Connection #0 to host www.beaconproject.eu left intact
 ```
+
+## Verify run — 2026-09-24T09:43:25Z
+
+### A record: beaconproject.eu (expect 172.66.0.241)
+```
+172.66.0.241
+```
+
+### TXT record: _cf-custom-hostname.beaconproject.eu
+```
+"419f97c3-d1f2-418e-8cfd-6469dd2c779f"
+```
+
+### CNAME record: _acme-challenge.beaconproject.eu
+```
+beaconproject.eu.7dede208f6a1d738.dcv.cloudflare.com.
+```
+
+### HTTPS check: https://beaconproject.eu
+```
+HTTP 200 in 0.083634s (final URL: https://beaconproject.eu/)
+```
+
+### A/CNAME record: www.beaconproject.eu
+```
+beaconproject.eu.
+172.66.0.241
+```
+
+### HTTPS check: https://www.beaconproject.eu
+```
+HTTP 308 in 0.064604s (final URL: https://www.beaconproject.eu/)
+```
+
+### verbose TLS/HTTP detail for www (to see the actual failure if any)
+```
+*  start date: Sep 24 08:31:15 2026 GMT
+*  expire date: Dec 23 09:31:11 2026 GMT
+*  subjectAltName: host "www.beaconproject.eu" matched cert's "*.beaconproject.eu"
+*  issuer: C=US; O=Google Trust Services; CN=WE1
+*  SSL certificate verify ok.
+*   Certificate level 0: Public key type EC/prime256v1 (256/128 Bits/secBits), signed using ecdsa-with-SHA256
+*   Certificate level 1: Public key type EC/prime256v1 (256/128 Bits/secBits), signed using ecdsa-with-SHA384
+*   Certificate level 2: Public key type EC/secp384r1 (384/192 Bits/secBits), signed using ecdsa-with-SHA384
+} [5 bytes data]
+* using HTTP/2
+* [HTTP/2] [1] OPENED stream for https://www.beaconproject.eu/
+* [HTTP/2] [1] [:method: GET]
+* [HTTP/2] [1] [:scheme: https]
+* [HTTP/2] [1] [:authority: www.beaconproject.eu]
+* [HTTP/2] [1] [:path: /]
+* [HTTP/2] [1] [user-agent: curl/8.5.0]
+* [HTTP/2] [1] [accept: */*]
+} [5 bytes data]
+> GET / HTTP/2
+> Host: www.beaconproject.eu
+> User-Agent: curl/8.5.0
+> Accept: */*
+> 
+{ [5 bytes data]
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+{ [238 bytes data]
+* TLSv1.3 (IN), TLS handshake, Newsession Ticket (4):
+{ [238 bytes data]
+* old SSL session ID is stale, removing
+{ [5 bytes data]
+< HTTP/2 308 
+< date: Thu, 24 Sep 2026 09:43:25 GMT
+< content-length: 0
+< location: https://beaconproject.eu/
+< strict-transport-security: max-age=31536000; includeSubDomains; preload
+< server: cloudflare
+< cf-ray: a400d8424cd1c05f-IAD
+< alt-svc: h3=":443"; ma=86400
+< 
+* Connection #0 to host www.beaconproject.eu left intact
+```
