@@ -11,7 +11,7 @@ import { Spinner } from '../../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../../theme/tokens';
 import { useSession } from '../../../../lib/hooks/useSession';
 import { placementPoints, useDeleteResult, useReopenResults, usePublishResults, useResultsGame } from '../../../../lib/api/adminResults';
-import { PasswordConfirmPanel } from '../../../../components/admin/PasswordConfirmPanel';
+import { PasswordConfirmPanel } from '../../../../components/PasswordConfirmPanel';
 
 // Reference: Beacon 15 Verify Results.dc.html. The source pre-fills every
 // row from an "EA read" and flips a row to admin-entered only once

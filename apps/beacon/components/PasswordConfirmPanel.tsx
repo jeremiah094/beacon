@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
-import { color, fontFamily } from '../../theme/tokens';
-import { supabase } from '../../lib/supabase';
-import { useSession } from '../../lib/hooks/useSession';
-import { AdminButton } from './AdminButton';
+import { color, fontFamily } from '../theme/tokens';
+import { supabase } from '../lib/supabase';
+import { useSession } from '../lib/hooks/useSession';
 
 /** Inline destructive-action confirmation — re-verifies the signed-in
- * admin's password via a real Supabase sign-in (the only way a client can
+ * user's password via a real Supabase sign-in (the only way a client can
  * genuinely confirm a password; there's nothing local to compare against)
  * before calling `onConfirmed`. Matches the app's existing "row/card
  * transforms into a confirm panel" pattern (schedule.tsx's cancel-game,
@@ -64,12 +63,18 @@ export function PasswordConfirmPanel({
       />
       {error && <Text style={styles.error}>{error}</Text>}
       <View style={{ flexDirection: 'row', gap: 10 }}>
-        <AdminButton
-          label={checking ? 'Checking…' : confirmLabel}
-          variant="destructiveFilled"
-          disabled={!password || checking}
-          onPress={handleConfirm}
-        />
+        <Pressable onPress={handleConfirm} disabled={!password || checking}>
+          {({ hovered }: any) => (
+            <View
+              style={[
+                styles.confirmBtn,
+                { backgroundColor: hovered ? 'rgba(255,90,54,0.22)' : color.emberTint },
+              ]}
+            >
+              <Text style={styles.confirmLabel}>{checking ? 'Checking…' : confirmLabel}</Text>
+            </View>
+          )}
+        </Pressable>
         <Pressable onPress={onCancel}>
           <View style={styles.cancelBtn}>
             <Text style={styles.cancelLabel}>Cancel</Text>
@@ -95,6 +100,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   error: { fontFamily: fontFamily.interMedium, fontSize: 12, color: color.ember },
+  confirmBtn: {
+    height: 42,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: color.emberBorderStrong,
+  },
+  confirmLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 13, color: color.ember },
   cancelBtn: { height: 42, paddingHorizontal: 16, justifyContent: 'center' },
   cancelLabel: { fontFamily: fontFamily.interMedium, fontSize: 13, color: color.textMuted },
 });

@@ -5,7 +5,7 @@ import { StyleSheet } from 'react-native';
 import { AdminShell } from '../../../components/admin/AdminShell';
 import { AdminButton } from '../../../components/admin/AdminButton';
 import { AdminChip } from '../../../components/admin/AdminChip';
-import { PasswordConfirmPanel } from '../../../components/admin/PasswordConfirmPanel';
+import { PasswordConfirmPanel } from '../../../components/PasswordConfirmPanel';
 import { Spinner } from '../../../components/Spinner';
 import { color, fontFamily } from '../../../theme/tokens';
 import { AdminLeagueSummary, useAdminLeagues, useDeleteLeague } from '../../../lib/api/adminLeagues';

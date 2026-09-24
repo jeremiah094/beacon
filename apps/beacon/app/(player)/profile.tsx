@@ -17,6 +17,8 @@ import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/hooks/useSession';
 import { useDashboard } from '../../lib/api/dashboard';
 import { ApexPlatform, PLATFORM_OPTIONS, linkApexId } from '../../lib/api/apexLink';
+import { deleteAccount } from '../../lib/api/account';
+import { PasswordConfirmPanel } from '../../components/PasswordConfirmPanel';
 
 // Not one of BUILD.md's 16 reference screens — added alongside the bottom
 // nav as the account/settings hub every tab bar needs. Reuses the same
@@ -35,6 +37,8 @@ export default function Profile() {
   const [linking, setLinking] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!userId) return;
@@ -62,6 +66,20 @@ export default function Profile() {
 
   async function handleSignOut() {
     await supabase.auth.signOut();
+    router.replace('/(auth)/sign-up');
+  }
+
+  async function handleDeleteAccount() {
+    setDeleteError(null);
+    const result = await deleteAccount();
+    if (!result.ok) {
+      setDeleteError(result.message);
+      return;
+    }
+    // The account (and its session, server-side) is already gone — a local
+    // sign-out just clears the on-device session without depending on a
+    // server round trip for a user that no longer exists.
+    await supabase.auth.signOut({ scope: 'local' });
     router.replace('/(auth)/sign-up');
   }
 
@@ -232,6 +250,33 @@ export default function Profile() {
               )}
             </Pressable>
           )}
+          {confirmingDelete ? (
+            <View style={styles.deleteConfirmBox}>
+              <PasswordConfirmPanel
+                label="DELETE ACCOUNT"
+                warning="This permanently deletes your account — your profile, stats, and team memberships. Leagues and match results you're attributed to are kept, with your name removed. This can't be undone."
+                confirmLabel="Delete account"
+                onCancel={() => {
+                  setConfirmingDelete(false);
+                  setDeleteError(null);
+                }}
+                onConfirmed={handleDeleteAccount}
+              />
+              {deleteError && <Text style={styles.deleteErrorText}>{deleteError}</Text>}
+            </View>
+          ) : (
+            <Pressable onPress={() => setConfirmingDelete(true)}>
+              {({ hovered }: any) => (
+                <View style={[styles.settingsRow, hovered && { borderColor: color.emberBorderStrong }]}>
+                  <View style={styles.settingsLabelRow}>
+                    <Ionicons name="trash-outline" size={16} color={color.ember} />
+                    <Text style={[styles.settingsLabel, { color: color.ember }]}>Delete account</Text>
+                  </View>
+                  <Text style={[styles.chevron, { color: color.ember }]}>→</Text>
+                </View>
+              )}
+            </Pressable>
+          )}
         </View>
 
         <Pressable onPress={handleSignOut}>
@@ -297,6 +342,8 @@ const styles = StyleSheet.create({
   settingsLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   settingsLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 14, color: color.textPrimary },
   chevron: { fontFamily: fontFamily.interRegular, fontSize: 16, color: color.textMuted },
+  deleteConfirmBox: { padding: 16, gap: 12, borderWidth: 1, borderColor: color.hairline, backgroundColor: color.panel },
+  deleteErrorText: { fontFamily: fontFamily.interMedium, fontSize: 12, color: color.ember },
   signOutRow: { flexDirection: 'row', gap: 8, height: 48, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: color.hairline },
   signOutLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 13, color: color.textMuted },
 });

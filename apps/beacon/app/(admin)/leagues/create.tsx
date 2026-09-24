@@ -12,7 +12,7 @@ import { useSession } from '../../../lib/hooks/useSession';
 import { useAdminLeague, useDeleteLeague, useSaveLeague } from '../../../lib/api/adminLeagues';
 import { useLeagueDefaults } from '../../../lib/api/adminSettings';
 import { REGIONS } from '../../../lib/leagueOptions';
-import { PasswordConfirmPanel } from '../../../components/admin/PasswordConfirmPanel';
+import { PasswordConfirmPanel } from '../../../components/PasswordConfirmPanel';
 
 // Reference: Beacon 11 Create League.dc.html. Also serves as the edit
 // screen (?leagueId=X) — BUILD.md's 16 screens don't include a separate

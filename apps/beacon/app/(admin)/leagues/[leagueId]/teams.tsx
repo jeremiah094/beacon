@@ -6,7 +6,7 @@ import { AdminButton } from '../../../../components/admin/AdminButton';
 import { AdminChip } from '../../../../components/admin/AdminChip';
 import { AdminTallyRow } from '../../../../components/admin/AdminTally';
 import { Diamond } from '../../../../components/Diamond';
-import { PasswordConfirmPanel } from '../../../../components/admin/PasswordConfirmPanel';
+import { PasswordConfirmPanel } from '../../../../components/PasswordConfirmPanel';
 import { Spinner } from '../../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../../theme/tokens';
 import { formatDateTime } from '../../../../lib/time';
