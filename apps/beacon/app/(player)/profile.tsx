@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -65,6 +65,20 @@ export default function Profile() {
   }
 
   async function handleSignOut() {
+    const confirmed = await new Promise<boolean>((resolve) => {
+      if (Platform.OS === 'web') {
+        // Alert.alert renders nothing on web — react-native-web has no
+        // native dialog to back it with, so this app's one other platform
+        // needs its own real (browser-native) confirm popup.
+        resolve(window.confirm('Are you sure you want to sign out?'));
+        return;
+      }
+      Alert.alert('Sign out', 'Are you sure you want to sign out?', [
+        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        { text: 'Sign out', style: 'destructive', onPress: () => resolve(true) },
+      ]);
+    });
+    if (!confirmed) return;
     await supabase.auth.signOut();
     router.replace('/(auth)/sign-up');
   }
