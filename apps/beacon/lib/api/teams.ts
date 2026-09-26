@@ -10,6 +10,7 @@ export type MyTeam = {
   leagueName: string | null;
   registrationStatus: 'none' | 'pending' | 'approved' | 'rejected';
   meta: string;
+  pendingJoinRequestCount: number;
 };
 
 async function fetchMyTeams(userId: string): Promise<MyTeam[]> {
@@ -31,6 +32,24 @@ async function fetchMyTeams(userId: string): Promise<MyTeam[]> {
   for (const r of registrations ?? []) {
     // Last one wins — a team registering for a new league after leaving one is the common case.
     regByTeam.set(r.team_id, { leagueId: r.league_id, leagueName: (r.leagues as any)?.name ?? '', status: r.status });
+  }
+
+  // Pending join requests only matter (and are only visible — RLS scopes
+  // team_join_requests_select to the requester or the team's captain) for
+  // teams this user captains. Without this, a captain has no signal on
+  // the My Teams list that anyone's waiting on them — the only place that
+  // shows requests is the roster screen, which nothing here points at.
+  const captainTeamIds = memberships.filter((m) => m.role === 'captain').map((m) => m.team_id);
+  const pendingCountByTeam = new Map<string, number>();
+  if (captainTeamIds.length > 0) {
+    const { data: pending } = await supabase
+      .from('team_join_requests')
+      .select('team_id')
+      .in('team_id', captainTeamIds)
+      .eq('status', 'pending');
+    for (const r of pending ?? []) {
+      pendingCountByTeam.set(r.team_id, (pendingCountByTeam.get(r.team_id) ?? 0) + 1);
+    }
   }
 
   const teams = await Promise.all(
@@ -74,6 +93,7 @@ async function fetchMyTeams(userId: string): Promise<MyTeam[]> {
         leagueName: reg?.leagueName ?? null,
         registrationStatus: (reg?.status as MyTeam['registrationStatus']) ?? 'none',
         meta,
+        pendingJoinRequestCount: pendingCountByTeam.get(m.team_id) ?? 0,
       };
     }),
   );

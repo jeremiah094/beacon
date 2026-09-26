@@ -264,8 +264,10 @@ function TeamCard({
   onSelect: () => void;
   onManage: () => void;
 }) {
+  const hasPendingRequests = team.pendingJoinRequestCount > 0;
+
   return (
-    <Pressable onPress={isActive ? onManage : onSelect}>
+    <Pressable onPress={isActive || hasPendingRequests ? onManage : onSelect}>
       <CornerCut
         cut={18}
         fill={isActive ? color.panel : color.base}
@@ -296,10 +298,19 @@ function TeamCard({
             </View>
           </View>
 
+          {team.pendingJoinRequestCount > 0 && (
+            <View style={styles.requestChip}>
+              <View style={styles.requestDot} />
+              <Text style={styles.requestChipLabel}>
+                {team.pendingJoinRequestCount} {team.pendingJoinRequestCount === 1 ? 'request' : 'requests'} to join — tap Manage to review
+              </Text>
+            </View>
+          )}
+
           <View style={styles.cardBottomRow}>
             <Text style={styles.cardMeta}>{team.meta}</Text>
-            <Text style={[styles.cardAction, { color: isActive ? color.textPrimary : color.verified }]}>
-              {isActive ? 'Manage →' : 'Switch to this team'}
+            <Text style={[styles.cardAction, { color: isActive || hasPendingRequests ? color.textPrimary : color.verified }]}>
+              {isActive || hasPendingRequests ? 'Manage →' : 'Switch to this team'}
             </Text>
           </View>
         </View>
@@ -340,6 +351,18 @@ const styles = StyleSheet.create({
   activeChipLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.12 * 9, color: color.verified },
   roleChip: { borderWidth: 1, borderColor: color.neutralBorder, paddingVertical: 4, paddingHorizontal: 7 },
   roleChipLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.12 * 9, color: color.textMuted },
+  requestChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    backgroundColor: color.emberTint,
+    borderWidth: 1,
+    borderColor: color.emberBorderSoft,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  requestDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.ember },
+  requestChipLabel: { flex: 1, fontFamily: fontFamily.interSemiBold, fontSize: 11, color: color.ember },
   cardBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
