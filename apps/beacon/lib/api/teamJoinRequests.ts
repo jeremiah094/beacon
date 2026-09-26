@@ -14,7 +14,7 @@ function displayName(p: { display_name: string | null; gamertag: string | null }
 async function fetchPendingJoinRequests(teamId: string): Promise<PendingJoinRequest[]> {
   const { data, error } = await supabase
     .from('team_join_requests')
-    .select('id, profile_id, profiles(display_name, gamertag)')
+    .select('id, profile_id, profiles!team_join_requests_profile_id_fkey(display_name, gamertag)')
     .eq('team_id', teamId)
     .eq('status', 'pending')
     .order('requested_at', { ascending: true });

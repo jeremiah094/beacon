@@ -61,11 +61,6 @@ export default function LineupLocked() {
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-      <View style={{ backgroundColor: '#ff3b30', padding: 6 }}>
-        <Text style={{ color: '#fff', fontSize: 11, textAlign: 'center', fontFamily: fontFamily.interSemiBold }}>
-          DEBUG MARKER — build check v2
-        </Text>
-      </View>
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <Pressable onPress={() => router.back()}>
