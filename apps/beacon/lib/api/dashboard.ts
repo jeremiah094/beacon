@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../supabase';
+import { getGamePhase } from '../time';
 
 export type DashboardStats = {
   rankName: string | null;
@@ -88,13 +89,19 @@ async function fetchDashboard(userId: string): Promise<DashboardData> {
     if (leagueTeams && leagueTeams.length > 0) {
       const leagueIds = leagueTeams.map((lt) => lt.league_id);
 
-      const { data: upcomingGames } = await supabase
+      const { data: upcomingGamesRaw } = await supabase
         .from('games')
         .select('id, league_id, round_number, game_number, scheduled_at, status')
         .in('league_id', leagueIds)
         .in('status', ['scheduled', 'lobby_open'])
         .order('scheduled_at', { ascending: true })
-        .limit(1);
+        .limit(20);
+
+      // games.status can lag wall-clock time (an admin never published
+      // results or cancelled an overdue game) — trust the real-world
+      // phase, same as the games list screen, so a stale row doesn't
+      // sit as "next match" forever.
+      const upcomingGames = (upcomingGamesRaw ?? []).filter((g) => getGamePhase(g.scheduled_at, g.status) !== 'completed');
 
       // Pick the league with the soonest game; fall back to the first
       // approved league if nothing is scheduled yet.
