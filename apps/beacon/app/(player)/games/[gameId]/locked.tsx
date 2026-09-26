@@ -8,6 +8,7 @@ import { Spinner } from '../../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../../theme/tokens';
 import { useSession } from '../../../../lib/hooks/useSession';
 import { RosterPlayer, useRequestSubstitution, useTeamLineup } from '../../../../lib/api/lineup';
+import { useDecideJoinRequest, usePendingJoinRequests } from '../../../../lib/api/teamJoinRequests';
 
 // Reference: Beacon 06 Lineup Locked.dc.html
 export default function LineupLocked() {
@@ -15,10 +16,13 @@ export default function LineupLocked() {
   const { userId } = useSession();
   const { data, isLoading } = useTeamLineup(teamId);
   const requestSub = useRequestSubstitution(teamId);
+  const { data: pendingRequests } = usePendingJoinRequests(teamId);
+  const decideJoinRequest = useDecideJoinRequest(teamId);
 
   const [requestOpen, setRequestOpen] = useState(false);
   const [pickedOut, setPickedOut] = useState<string | null>(null);
   const [pickedIn, setPickedIn] = useState<string | null>(null);
+  const [joinRequestError, setJoinRequestError] = useState<string | null>(null);
 
   if (isLoading || !data) {
     return (
@@ -32,6 +36,8 @@ export default function LineupLocked() {
 
   const starters = data.roster.filter((p) => data.selectedProfileIds.includes(p.profileId));
   const bench = data.roster.filter((p) => !data.selectedProfileIds.includes(p.profileId));
+  const isCaptain = data.roster.some((p) => p.profileId === userId && p.role === 'captain');
+  const rosterFull = data.roster.length >= 5;
 
   const requestClosed = !requestOpen && !data.pendingSubRequest;
   const requestSent = !!data.pendingSubRequest;
@@ -40,6 +46,17 @@ export default function LineupLocked() {
     if (!pickedOut || !pickedIn || !data!.gameId || !userId) return;
     await requestSub.mutateAsync({ gameId: data!.gameId, outProfileId: pickedOut, inProfileId: pickedIn, requestedBy: userId });
     setRequestOpen(false);
+  }
+
+  async function handleDecideJoinRequest(requestId: string, profileId: string, approve: boolean) {
+    if (!userId) return;
+    setJoinRequestError(null);
+    try {
+      await decideJoinRequest.mutateAsync({ requestId, profileId, approve, captainId: userId });
+    } catch (err) {
+      const message = (err as { message?: string } | null)?.message;
+      setJoinRequestError(message || 'Could not process that request. Try again.');
+    }
   }
 
   return (
@@ -102,6 +119,33 @@ export default function LineupLocked() {
         {bench.map((p) => (
           <BenchRow key={p.profileId} player={p} />
         ))}
+
+        {isCaptain && (pendingRequests ?? []).length > 0 && (
+          <View style={styles.joinRequestsBox}>
+            <Text style={styles.sectionLabel}>Requests to join</Text>
+            {pendingRequests!.map((r) => (
+              <View key={r.id} style={styles.joinRequestRow}>
+                <Text style={styles.joinRequestName} numberOfLines={1}>{r.name}</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Pressable onPress={() => handleDecideJoinRequest(r.id, r.profileId, false)} disabled={decideJoinRequest.isPending}>
+                    <Text style={styles.joinRequestReject}>Decline</Text>
+                  </Pressable>
+                  <Pressable onPress={() => handleDecideJoinRequest(r.id, r.profileId, true)} disabled={rosterFull || decideJoinRequest.isPending}>
+                    <View style={[styles.joinRequestApprove, rosterFull && { opacity: 0.4 }]}>
+                      <Text style={styles.joinRequestApproveLabel}>Approve</Text>
+                    </View>
+                  </Pressable>
+                </View>
+              </View>
+            ))}
+            {joinRequestError && (
+              <View style={styles.noteRow}>
+                <View style={styles.noteBar} />
+                <Text style={styles.noteText}>{joinRequestError}</Text>
+              </View>
+            )}
+          </View>
+        )}
 
         <CornerCut cut={18} fill={color.panel} strokeColor={color.hairline} style={{ marginTop: 8 }}>
           <View style={styles.explainContent}>
@@ -339,6 +383,15 @@ const styles = StyleSheet.create({
   benchAvatarLabel: { fontFamily: fontFamily.rajdhaniBold, fontSize: 12, color: color.textMuted },
   benchName: { fontFamily: fontFamily.interSemiBold, fontSize: 14, color: color.textMuted },
   benchMeta: { fontFamily: fontFamily.interRegular, fontSize: 11, color: color.textMuted, ...tabularNums },
+  joinRequestsBox: { gap: 10, borderWidth: 1, borderColor: color.hairline, backgroundColor: color.panel, padding: 14, marginTop: 8 },
+  joinRequestRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10 },
+  joinRequestName: { flex: 1, minWidth: 0, fontFamily: fontFamily.interSemiBold, fontSize: 14, color: color.textPrimary },
+  joinRequestReject: { fontFamily: fontFamily.interMedium, fontSize: 12, color: color.textMuted, alignSelf: 'center' },
+  joinRequestApprove: { height: 32, paddingHorizontal: 12, backgroundColor: color.verifiedTint, borderWidth: 1, borderColor: color.verifiedTintBorder, alignItems: 'center', justifyContent: 'center' },
+  joinRequestApproveLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.verified },
+  noteRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  noteBar: { width: 3, alignSelf: 'stretch', backgroundColor: 'rgba(242,241,236,0.35)' },
+  noteText: { flex: 1, fontFamily: fontFamily.interRegular, fontSize: 12, lineHeight: 17, color: color.textMuted },
   explainContent: { padding: 18, gap: 14 },
   explainTitle: { fontFamily: fontFamily.rajdhaniSemiBold, fontSize: 17, letterSpacing: 0.02 * 17, color: color.textPrimary },
   explainBody: { fontFamily: fontFamily.interRegular, fontSize: 13, lineHeight: 19.5, color: color.textMuted },
