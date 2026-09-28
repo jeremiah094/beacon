@@ -35,24 +35,31 @@ type Row = {
         id: string;
         gamertag: string | null;
         display_name: string | null;
-        apex_uid: string | null;
-        apex_verified_at: string | null;
-        player_stats: { rank_name: string | null } | null;
       } | null;
     }[];
   } | null;
 };
 
 async function fetchApprovalQueue(leagueId: string): Promise<ApprovalTeam[]> {
+  const { data: league } = await supabase.from('leagues').select('title_id').eq('id', leagueId).single();
+
   const { data, error } = await supabase
     .from('league_teams')
-    .select(
-      'team_id, status, rejection_reason, registered_at, teams(id, name, team_members(role, profiles(id, gamertag, display_name, apex_uid, apex_verified_at, player_stats(rank_name))))',
-    )
+    .select('team_id, status, rejection_reason, registered_at, teams(id, name, team_members(role, profiles(id, gamertag, display_name)))')
     .eq('league_id', leagueId)
     .order('registered_at', { ascending: true })
     .returns<Row[]>();
   if (error) throw error;
+
+  // game_accounts has no direct FK to team_members (both reference
+  // profiles independently, and a profile can have one row per title),
+  // so it's fetched separately and merged here rather than embedded —
+  // also lets this scope to exactly this league's title.
+  const profileIds = (data ?? []).flatMap((r) => (r.teams?.team_members ?? []).map((m) => m.profiles?.id).filter((id): id is string => !!id));
+  const { data: accounts } = league?.title_id
+    ? await supabase.from('game_accounts').select('profile_id, external_uid, verified_at, rank_name').eq('title_id', league.title_id).in('profile_id', profileIds)
+    : { data: [] };
+  const accountByProfile = new Map((accounts ?? []).map((a) => [a.profile_id, a]));
 
   return (data ?? [])
     .filter((r) => r.teams)
@@ -62,13 +69,14 @@ async function fetchApprovalQueue(leagueId: string): Promise<ApprovalTeam[]> {
         .filter((m) => m.profiles)
         .map((m) => {
           const p = m.profiles!;
+          const account = accountByProfile.get(p.id);
           return {
             profileId: p.id,
             name: p.display_name || p.gamertag || 'Unnamed player',
             role: (m.role as ApprovalPlayer['role']) ?? 'member',
-            eaId: p.apex_uid,
-            rank: p.player_stats?.rank_name ?? null,
-            verified: !!p.apex_verified_at,
+            eaId: account?.external_uid ?? null,
+            rank: account?.rank_name ?? null,
+            verified: !!account?.verified_at,
           };
         })
         .sort((a, b) => (a.role === 'captain' ? -1 : b.role === 'captain' ? 1 : 0));

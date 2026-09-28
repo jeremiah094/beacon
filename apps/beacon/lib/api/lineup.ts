@@ -28,35 +28,42 @@ export type TeamLineupData = {
   pendingSubRequest: { id: string; inProfileId: string; status: string; decidedAt: string | null } | null;
 };
 
-function personMeta(row: { rank_name: string | null; kd: number | null; apex_verified_at: string | null }) {
-  if (!row.apex_verified_at) return 'Awaiting EA link';
+function personMeta(row: { rank_name: string | null; kd: number | null; verifiedAt: string | null }) {
+  if (!row.verifiedAt) return 'Awaiting EA link';
   const rank = row.rank_name ?? 'Unranked';
   const kd = row.kd != null ? `${row.kd.toFixed(2)} K/D` : '';
   return kd ? `${rank} · ${kd}` : rank;
 }
 
 async function fetchTeamLineup(teamId: string): Promise<TeamLineupData> {
-  const { data: team } = await supabase.from('teams').select('id, name').eq('id', teamId).single();
+  const { data: team } = await supabase.from('teams').select('id, name, title_id').eq('id', teamId).single();
 
   const { data: members, error: membersError } = await supabase
     .from('team_members')
-    // player_stats has no direct FK to team_members (both reference
-    // profiles independently), so PostgREST can only embed it nested
-    // under profiles, not as a sibling — a sibling embed 400s.
-    .select('profile_id, role, profiles(gamertag, apex_verified_at, player_stats(rank_name, kd))')
+    .select('profile_id, role, profiles(gamertag)')
     .eq('team_id', teamId);
   if (membersError) throw membersError;
 
+  // game_accounts has no direct FK to team_members (both reference
+  // profiles independently, and a profile can have one row per title),
+  // so it's fetched separately and merged here, scoped to this team's
+  // own title (verification is per-game, not per-profile).
+  const profileIds = (members ?? []).map((m) => m.profile_id);
+  const { data: accounts } = team?.title_id
+    ? await supabase.from('game_accounts').select('profile_id, verified_at, rank_name, kd').eq('title_id', team.title_id).in('profile_id', profileIds)
+    : { data: [] };
+  const accountByProfile = new Map((accounts ?? []).map((a) => [a.profile_id, a]));
+
   const roster: RosterPlayer[] = (members ?? []).map((m) => {
     const profile = m.profiles as any;
-    const stats = profile?.player_stats as any;
-    const verified = !!profile?.apex_verified_at;
+    const account = accountByProfile.get(m.profile_id);
+    const verified = !!account?.verified_at;
     return {
       profileId: m.profile_id,
       name: profile?.gamertag ?? 'Player',
       initials: (profile?.gamertag ?? '??').slice(0, 2).toUpperCase(),
       role: m.role,
-      meta: personMeta({ rank_name: stats?.rank_name ?? null, kd: stats?.kd ?? null, apex_verified_at: profile?.apex_verified_at ?? null }),
+      meta: personMeta({ rank_name: account?.rank_name ?? null, kd: account?.kd ?? null, verifiedAt: account?.verified_at ?? null }),
       verified,
       eligible: verified,
     };

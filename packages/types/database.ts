@@ -15,6 +15,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      game_accounts: {
+        Row: {
+          external_uid: string
+          fetched_at: string | null
+          kd: number | null
+          kills: number | null
+          level: number | null
+          most_played_legend: string | null
+          platform: string | null
+          profile_id: string
+          rank_name: string | null
+          rank_score: number | null
+          raw: Json | null
+          title_id: string
+          verified_at: string | null
+          wins: number | null
+        }
+        Insert: {
+          external_uid: string
+          fetched_at?: string | null
+          kd?: number | null
+          kills?: number | null
+          level?: number | null
+          most_played_legend?: string | null
+          platform?: string | null
+          profile_id: string
+          rank_name?: string | null
+          rank_score?: number | null
+          raw?: Json | null
+          title_id: string
+          verified_at?: string | null
+          wins?: number | null
+        }
+        Update: {
+          external_uid?: string
+          fetched_at?: string | null
+          kd?: number | null
+          kills?: number | null
+          level?: number | null
+          most_played_legend?: string | null
+          platform?: string | null
+          profile_id?: string
+          rank_name?: string | null
+          rank_score?: number | null
+          raw?: Json | null
+          title_id?: string
+          verified_at?: string | null
+          wins?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_accounts_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "game_accounts_title_id_fkey"
+            columns: ["title_id"]
+            isOneToOne: false
+            referencedRelation: "titles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       games: {
         Row: {
           game_number: number
@@ -378,58 +444,8 @@ export type Database = {
           },
         ]
       }
-      player_stats: {
-        Row: {
-          fetched_at: string | null
-          kd: number | null
-          kills: number | null
-          level: number | null
-          most_played_legend: string | null
-          profile_id: string
-          rank_name: string | null
-          rank_score: number | null
-          raw: Json | null
-          wins: number | null
-        }
-        Insert: {
-          fetched_at?: string | null
-          kd?: number | null
-          kills?: number | null
-          level?: number | null
-          most_played_legend?: string | null
-          profile_id: string
-          rank_name?: string | null
-          rank_score?: number | null
-          raw?: Json | null
-          wins?: number | null
-        }
-        Update: {
-          fetched_at?: string | null
-          kd?: number | null
-          kills?: number | null
-          level?: number | null
-          most_played_legend?: string | null
-          profile_id?: string
-          rank_name?: string | null
-          rank_score?: number | null
-          raw?: Json | null
-          wins?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "player_stats_profile_id_fkey"
-            columns: ["profile_id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       profiles: {
         Row: {
-          apex_platform: string | null
-          apex_uid: string | null
-          apex_verified_at: string | null
           avatar_url: string | null
           created_at: string
           display_name: string | null
@@ -438,9 +454,6 @@ export type Database = {
           is_admin: boolean
         }
         Insert: {
-          apex_platform?: string | null
-          apex_uid?: string | null
-          apex_verified_at?: string | null
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null
@@ -449,9 +462,6 @@ export type Database = {
           is_admin?: boolean
         }
         Update: {
-          apex_platform?: string | null
-          apex_uid?: string | null
-          apex_verified_at?: string | null
           avatar_url?: string | null
           created_at?: string
           display_name?: string | null

@@ -1,7 +1,8 @@
 // apex-link-id — BUILD.md §4. Called from screen 01 (Sign Up). Verifies a
 // player/platform pair against apexlegendsapi.com (fronted by
-// api.mozambiquehe.re) and, on success, writes apex_uid/apex_platform/
-// apex_verified_at to the caller's profile and seeds player_stats.
+// api.mozambiquehe.re) and, on success, upserts the caller's Apex row in
+// game_accounts (external_uid/platform/verified_at + stats) — the
+// generalized per-title verification table every game uses.
 //
 // APEX_API_KEY is a Supabase Edge Function secret — set separately
 // (dashboard or `supabase secrets set`), never present in this source or
@@ -170,29 +171,40 @@ Deno.serve(async (req: Request) => {
 
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  const { error: profileError } = await admin
-    .from("profiles")
-    .update({ gamertag, apex_uid: uid, apex_platform: platform, apex_verified_at: fetchedAt })
-    .eq("id", user.id);
+  const { error: profileError } = await admin.from("profiles").update({ gamertag }).eq("id", user.id);
   if (profileError) {
     console.error("apex-link-id: failed to update profile", profileError);
     return jsonResponse({ ok: false, reason: "upstream_down", message: FAILURE_COPY.upstream_down }, 200);
   }
 
-  const { error: statsError } = await admin.from("player_stats").upsert({
-    profile_id: user.id,
-    rank_name: rankName,
-    rank_score: rankScore,
-    kd,
-    wins,
-    kills,
-    most_played_legend: mostPlayedLegend,
-    level,
-    raw,
-    fetched_at: fetchedAt,
-  });
-  if (statsError) {
-    console.error("apex-link-id: failed to upsert player_stats", statsError);
+  const { data: apexTitle, error: titleError } = await admin.from("titles").select("id").eq("slug", "apex").single();
+  if (titleError || !apexTitle) {
+    console.error("apex-link-id: failed to resolve apex title", titleError);
+    return jsonResponse({ ok: false, reason: "upstream_down", message: FAILURE_COPY.upstream_down }, 200);
+  }
+
+  const { error: accountError } = await admin.from("game_accounts").upsert(
+    {
+      profile_id: user.id,
+      title_id: apexTitle.id,
+      external_uid: uid,
+      platform,
+      verified_at: fetchedAt,
+      rank_name: rankName,
+      rank_score: rankScore,
+      kd,
+      wins,
+      kills,
+      most_played_legend: mostPlayedLegend,
+      level,
+      raw,
+      fetched_at: fetchedAt,
+    },
+    { onConflict: "profile_id,title_id" },
+  );
+  if (accountError) {
+    console.error("apex-link-id: failed to upsert game_accounts", accountError);
+    return jsonResponse({ ok: false, reason: "upstream_down", message: FAILURE_COPY.upstream_down }, 200);
   }
 
   return jsonResponse({

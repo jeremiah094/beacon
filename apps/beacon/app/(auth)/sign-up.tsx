@@ -44,7 +44,7 @@ export default function SignUp() {
   // Linking a gaming ID is optional everywhere — filling it in still runs
   // the real verification; leaving it blank just skips straight through
   // (and is always reachable again later via sign-in, which re-checks
-  // apex_verified_at and drops an unlinked account back on this step).
+  // game_accounts and drops an unlinked account back on this step).
   const linkReady = gamerId.trim().length >= 3;
 
   const missing: string[] = [];
@@ -94,10 +94,16 @@ export default function SignUp() {
   // Discord flow — both land here with nothing more than a userId once a
   // session exists, whatever got them there.
   async function routeAfterSignIn(userId: string) {
-    const { data: profile } = await supabase.from('profiles').select('apex_verified_at, is_admin').eq('id', userId).maybeSingle();
+    const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', userId).maybeSingle();
     if (profile?.is_admin) {
       router.replace('/(admin)/leagues');
-    } else if (profile?.apex_verified_at) {
+      return;
+    }
+    const { data: apexTitle } = await supabase.from('titles').select('id').eq('slug', 'apex').single();
+    const { data: account } = apexTitle
+      ? await supabase.from('game_accounts').select('verified_at').eq('profile_id', userId).eq('title_id', apexTitle.id).maybeSingle()
+      : { data: null };
+    if (account?.verified_at) {
       router.replace('/(player)/stats');
     } else {
       // Confirmed and signed in, but never finished (or skipped) linking

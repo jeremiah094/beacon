@@ -45,27 +45,30 @@ export type DashboardData = {
 };
 
 async function fetchDashboard(userId: string): Promise<DashboardData> {
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('gamertag, display_name, apex_verified_at')
-    .eq('id', userId)
-    .single();
+  const { data: profile } = await supabase.from('profiles').select('gamertag, display_name').eq('id', userId).single();
 
-  const { data: statsRow } = await supabase
-    .from('player_stats')
-    .select('rank_name, rank_score, kd, wins, kills, most_played_legend, fetched_at')
-    .eq('profile_id', userId)
-    .maybeSingle();
+  // Home is Apex-only for now — a title-aware version lands with the
+  // multi-game switcher (game_accounts holds one row per title a player
+  // has linked).
+  const { data: apexTitle } = await supabase.from('titles').select('id').eq('slug', 'apex').single();
+  const { data: accountRow } = apexTitle
+    ? await supabase
+        .from('game_accounts')
+        .select('verified_at, rank_name, rank_score, kd, wins, kills, most_played_legend, fetched_at')
+        .eq('profile_id', userId)
+        .eq('title_id', apexTitle.id)
+        .maybeSingle()
+    : { data: null };
 
-  const stats: DashboardStats | null = statsRow
+  const stats: DashboardStats | null = accountRow
     ? {
-        rankName: statsRow.rank_name,
-        rankScore: statsRow.rank_score,
-        kd: statsRow.kd,
-        wins: statsRow.wins,
-        kills: statsRow.kills,
-        mostPlayedLegend: statsRow.most_played_legend,
-        fetchedAt: statsRow.fetched_at,
+        rankName: accountRow.rank_name,
+        rankScore: accountRow.rank_score,
+        kd: accountRow.kd,
+        wins: accountRow.wins,
+        kills: accountRow.kills,
+        mostPlayedLegend: accountRow.most_played_legend,
+        fetchedAt: accountRow.fetched_at,
       }
     : null;
 
@@ -194,7 +197,7 @@ async function fetchDashboard(userId: string): Promise<DashboardData> {
   return {
     gamertag: profile?.gamertag ?? null,
     displayName: profile?.display_name ?? null,
-    isVerified: !!profile?.apex_verified_at,
+    isVerified: !!accountRow?.verified_at,
     stats,
     league,
     hasAnyTeam,
