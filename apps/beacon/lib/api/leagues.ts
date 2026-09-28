@@ -5,6 +5,7 @@ export type LeagueSummary = {
   id: string;
   name: string;
   titleName: string;
+  titleSlug: string;
   teamsPerLobby: number;
   seasonLabel: string | null;
   seasonStart: string | null;
@@ -40,6 +41,7 @@ async function fetchLeagues(titleSlug: string): Promise<LeagueSummary[]> {
       id: l.id,
       name: l.name,
       titleName: (l.titles as any)?.name ?? 'Beacon',
+      titleSlug: (l.titles as any)?.slug ?? 'apex',
       teamsPerLobby: l.teams_per_lobby,
       seasonLabel: l.season_label,
       seasonStart: l.season_start,

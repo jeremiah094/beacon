@@ -132,6 +132,10 @@ function LeagueCard({ league, onJoin }: { league: LeagueSummary; onJoin: () => v
           {league.entryRules ? <Text style={[styles.metaLine, tabularNums]}>{league.entryRules}</Text> : null}
         </View>
 
+        {titleMeta(league.titleSlug).disclaimer ? (
+          <Text style={styles.disclaimerLine}>{titleMeta(league.titleSlug).disclaimer}</Text>
+        ) : null}
+
         <View style={{ gap: 7 }}>
           <View style={styles.capacityRow}>
             <Text style={styles.capacityLabel}>TEAMS REGISTERED</Text>
@@ -234,6 +238,7 @@ const styles = StyleSheet.create({
   statusChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 5, paddingHorizontal: 8, borderWidth: 1 },
   statusChipLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.12 * 9 },
   metaLine: { fontFamily: fontFamily.interRegular, fontSize: 11, lineHeight: 15, color: color.textMuted },
+  disclaimerLine: { fontFamily: fontFamily.interRegular, fontSize: 10, lineHeight: 14, color: color.textMuted, opacity: 0.7 },
   capacityRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' },
   capacityLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.12 * 10, color: color.textMuted },
   capacityValue: { fontFamily: fontFamily.rajdhaniBold, fontSize: 14 },
