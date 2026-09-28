@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { AdminShell } from '../../../../components/admin/AdminShell';
 import { AdminButton } from '../../../../components/admin/AdminButton';
 import { AdminChip } from '../../../../components/admin/AdminChip';
@@ -10,7 +10,7 @@ import { Diamond } from '../../../../components/Diamond';
 import { Spinner } from '../../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../../theme/tokens';
 import { useSession } from '../../../../lib/hooks/useSession';
-import { placementPoints, useDeleteResult, useReopenResults, usePublishResults, useResultsGame } from '../../../../lib/api/adminResults';
+import { placementPoints, useDeleteGame, useDeleteResult, useReopenResults, usePublishResults, useResultsGame } from '../../../../lib/api/adminResults';
 import { PasswordConfirmPanel } from '../../../../components/PasswordConfirmPanel';
 
 // Reference: Beacon 15 Verify Results.dc.html. The source pre-fills every
@@ -28,6 +28,7 @@ export default function VerifyResults() {
   const publish = usePublishResults(gameId);
   const reopen = useReopenResults(gameId);
   const deleteResult = useDeleteResult(gameId);
+  const deleteGame = useDeleteGame(game?.leagueId);
 
   const [placements, setPlacements] = useState<Record<string, string>>({});
   const [kills, setKills] = useState<Record<string, string>>({});
@@ -35,6 +36,7 @@ export default function VerifyResults() {
   const [onlyIssues, setOnlyIssues] = useState(false);
   const [justPublished, setJustPublished] = useState(false);
   const [deletingTeamId, setDeletingTeamId] = useState<string | null>(null);
+  const [deletingGame, setDeletingGame] = useState(false);
 
   useEffect(() => {
     if (game && !loaded) {
@@ -207,6 +209,23 @@ export default function VerifyResults() {
               <Text style={styles.resetLabel}>Reopen for correction</Text>
             </Pressable>
           )}
+
+          {deletingGame ? (
+            <PasswordConfirmPanel
+              label="DELETE THIS GAME"
+              warning={`This permanently deletes Match ${game.roundNumber} · Game ${game.gameNumber} — its result, lineups, and substitution log. Standings update immediately. This can't be undone.`}
+              confirmLabel="Delete game"
+              onCancel={() => setDeletingGame(false)}
+              onConfirmed={async () => {
+                await deleteGame.mutateAsync(game.id);
+                router.replace(`/(admin)/leagues/${game.leagueId}/results` as any);
+              }}
+            />
+          ) : (
+            <Pressable onPress={() => setDeletingGame(true)}>
+              <Text style={styles.deleteGameLabel}>Delete this game</Text>
+            </Pressable>
+          )}
         </>
       }
     >
@@ -361,4 +380,5 @@ const styles = StyleSheet.create({
   noteText: { flex: 1, fontFamily: fontFamily.interRegular, fontSize: 12, lineHeight: 17, color: color.textMuted },
   publishedNote: { flex: 1, fontFamily: fontFamily.interMedium, fontSize: 12, lineHeight: 17, color: color.verified },
   resetLabel: { fontFamily: fontFamily.interMedium, fontSize: 11, color: color.textMuted, textAlign: 'center' },
+  deleteGameLabel: { fontFamily: fontFamily.interMedium, fontSize: 11, color: color.ember, textAlign: 'center' },
 });

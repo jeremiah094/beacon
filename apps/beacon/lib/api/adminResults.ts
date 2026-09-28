@@ -183,6 +183,52 @@ export function useDeleteResult(gameId: string | undefined) {
   });
 }
 
+/** Deletes the game row outright (not just its result) — cascades
+ * through results, lineups/lineup_players, substitutions,
+ * substitution_requests, lobby_presence, and notification_prefs, all
+ * `on delete cascade` off games(id). RLS's `games_delete` already covers
+ * DELETE for admins. */
+export function useDeleteGame(leagueId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (gameId: string) => {
+      const { error } = await supabase.from('games').delete().eq('id', gameId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminResultsList', leagueId] });
+      queryClient.invalidateQueries({ queryKey: ['adminGames'] });
+      queryClient.invalidateQueries({ queryKey: ['adminNavCounts'] });
+      queryClient.invalidateQueries({ queryKey: ['standings'] });
+    },
+  });
+}
+
+/** Deletes every completed game in a round at once — scoped to
+ * status = 'completed' so a still-scheduled game that happens to share
+ * the round number (a future game in the same match week) is never
+ * caught up in a "delete this match's results" action. */
+export function useDeleteMatch(leagueId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (roundNumber: number) => {
+      const { error } = await supabase
+        .from('games')
+        .delete()
+        .eq('league_id', leagueId as string)
+        .eq('round_number', roundNumber)
+        .eq('status', 'completed');
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminResultsList', leagueId] });
+      queryClient.invalidateQueries({ queryKey: ['adminGames'] });
+      queryClient.invalidateQueries({ queryKey: ['adminNavCounts'] });
+      queryClient.invalidateQueries({ queryKey: ['standings'] });
+    },
+  });
+}
+
 export type ResultsListGame = {
   id: string;
   roundNumber: number;
