@@ -75,8 +75,11 @@ export function useSaveGame(leagueId: string | undefined) {
         map: form.map,
         lobby_code: form.lobbyCode,
       };
+      const duplicateMessage = `Match ${form.roundNumber} already has a Game ${form.gameNumber}.`;
+
       if (gameId) {
         const { error } = await supabase.from('games').update(payload).eq('id', gameId);
+        if (error?.code === '23505') throw new Error(duplicateMessage);
         if (error) throw error;
         return gameId;
       }
@@ -88,6 +91,7 @@ export function useSaveGame(leagueId: string | undefined) {
         .insert({ ...payload, league_id: leagueId as string, status: 'scheduled' })
         .select('id')
         .single();
+      if (error?.code === '23505') throw new Error(duplicateMessage);
       if (error || !data) throw error ?? new Error('Failed to create game');
       return data.id as string;
     },

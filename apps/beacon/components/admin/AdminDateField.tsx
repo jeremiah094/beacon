@@ -5,6 +5,8 @@ import { color, fontFamily } from '../../theme/tokens';
 type Props = {
   value: string; // YYYY-MM-DD
   onChange: (value: string) => void;
+  min?: string; // YYYY-MM-DD — web only, native has no equivalent picker constraint
+  max?: string; // YYYY-MM-DD — web only
   style?: object;
 };
 
@@ -25,11 +27,13 @@ const inputStyle = {
  * native picker UI without a new native-datepicker dependency this
  * web-only surface doesn't otherwise need. Falls back to a plain text
  * field on native so the admin routes still work if opened there. */
-export function AdminDateField({ value, onChange, style }: Props) {
+export function AdminDateField({ value, onChange, min, max, style }: Props) {
   if (Platform.OS === 'web') {
     return createElement('input', {
       type: 'date',
       value,
+      min,
+      max,
       onChange: (e: { target: { value: string } }) => onChange(e.target.value),
       style: { ...inputStyle, borderStyle: 'solid', colorScheme: 'dark', ...style },
     });

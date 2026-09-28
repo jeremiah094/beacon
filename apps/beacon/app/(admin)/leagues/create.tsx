@@ -114,7 +114,7 @@ export default function CreateOrEditLeague() {
       actions={
         <>
           <AdminChip label={published ? 'LIVE' : 'DRAFT'} tone={published ? 'verified' : 'neutral'} dotShape="circle" />
-          <AdminButton label="Save draft" variant="secondary" onPress={() => handleSave(false)} disabled={!name.trim() || saveLeague.isPending} />
+          <AdminButton label={published ? 'Save changes' : 'Save draft'} variant="secondary" onPress={() => handleSave(false)} disabled={!name.trim() || saveLeague.isPending} />
           <AdminButton
             label={published ? 'Published' : 'Publish league'}
             onPress={() => handleSave(true)}
@@ -336,7 +336,10 @@ function durationLabel(start: string, end: string): string {
   const s = new Date(start);
   const e = new Date(end);
   if (isNaN(s.getTime()) || isNaN(e.getTime())) return 'Set both dates';
-  const weeks = Math.max(1, Math.round((e.getTime() - s.getTime()) / (7 * 24 * 3600 * 1000)));
+  const days = Math.round((e.getTime() - s.getTime()) / (24 * 3600 * 1000)) + 1;
+  if (days <= 0) return 'End before start';
+  if (days < 14) return `${days} day${days === 1 ? '' : 's'}`;
+  const weeks = Math.round(days / 7);
   return `${weeks} week${weeks === 1 ? '' : 's'}`;
 }
 

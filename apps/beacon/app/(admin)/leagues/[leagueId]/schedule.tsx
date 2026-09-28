@@ -62,8 +62,11 @@ export default function ScheduleMatches() {
   const [justPublishedId, setJustPublishedId] = useState<string | null>(null);
   const [editingCodeId, setEditingCodeId] = useState<string | null>(null);
   const [codeInput, setCodeInput] = useState('');
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const active = (games ?? []).filter((g) => g.status !== 'cancelled');
+  const seasonStart = league?.season_start ?? null;
+  const seasonEnd = league?.season_end ?? null;
 
   function startEdit(g: AdminGame) {
     setEditingId(g.id);
@@ -86,10 +89,21 @@ export default function ScheduleMatches() {
     setJustPublishedId(null);
   }
 
+  // Other games already in this round (excluding whichever one is being
+  // edited) — used both to pin every game in a match to one shared day
+  // and to block a game-number that match already has.
+  const sameRoundGames = active.filter((g) => String(g.roundNumber) === round.trim() && g.id !== editingId);
+  const existingRoundDate = sameRoundGames[0] ? new Date(sameRoundGames[0].scheduledAt).toISOString().slice(0, 10) : null;
+  const duplicateGameNumber = sameRoundGames.some((g) => String(g.gameNumber) === gameNumber.trim());
+
   const missing: string[] = [];
   if (!round.trim()) missing.push('a match number');
   if (!gameNumber.trim()) missing.push('a game number');
   if (!date.trim()) missing.push('a date');
+  if (date.trim() && seasonStart && date < seasonStart) missing.push(`a date on or after the season start (${seasonStart})`);
+  if (date.trim() && seasonEnd && date > seasonEnd) missing.push(`a date on or before the season end (${seasonEnd})`);
+  if (date.trim() && existingRoundDate && date !== existingRoundDate) missing.push(`a date matching Match ${round}'s other games (${existingRoundDate})`);
+  if (round.trim() && gameNumber.trim() && duplicateGameNumber) missing.push(`a different game number — Match ${round} already has a Game ${gameNumber}`);
   const ready = missing.length === 0;
   let blockedReason = '';
   if (missing.length === 1) blockedReason = `Publishing needs ${missing[0]}.`;
@@ -99,6 +113,7 @@ export default function ScheduleMatches() {
 
   async function publish() {
     if (!ready || !scheduledAt) return;
+    setSaveError(null);
     const form: GameFormData = {
       roundNumber: Number(round),
       gameNumber: Number(gameNumber),
@@ -106,11 +121,16 @@ export default function ScheduleMatches() {
       map,
       lobbyCode: lobbyCodeInput.trim() || null,
     };
-    const id = await saveGame.mutateAsync({ gameId: editingId ?? undefined, form });
-    if (editingId) {
-      setEditingId(null);
-    } else {
-      setJustPublishedId(id);
+    try {
+      const id = await saveGame.mutateAsync({ gameId: editingId ?? undefined, form });
+      if (editingId) {
+        setEditingId(null);
+      } else {
+        setJustPublishedId(id);
+      }
+    } catch (err) {
+      const message = (err as { message?: string } | null)?.message;
+      setSaveError(message || 'Could not save the game. Try again.');
     }
   }
 
@@ -228,6 +248,13 @@ export default function ScheduleMatches() {
             </View>
           )}
 
+          {saveError && (
+            <View style={styles.noteRow}>
+              <View style={styles.noteBar} />
+              <Text style={styles.noteText}>{saveError}</Text>
+            </View>
+          )}
+
           <AdminButton
             label={editingId ? 'Save changes' : published ? 'Schedule published' : 'Publish schedule'}
             height={52}
@@ -258,7 +285,13 @@ export default function ScheduleMatches() {
           <TextInput value={gameNumber} onChangeText={(v) => { setGameNumber(v); setJustPublishedId(null); }} placeholder="1" placeholderTextColor={color.fillPlaceholder} keyboardType="number-pad" style={[styles.input, tabularNums]} />
         </Field>
         <Field label="Date" style={isMobile ? { width: '100%' } : { flex: 1 }}>
-          <AdminDateField value={date} onChange={(v) => { setDate(v); setJustPublishedId(null); }} style={tabularNums} />
+          <AdminDateField
+            value={date}
+            onChange={(v) => { setDate(v); setJustPublishedId(null); }}
+            min={existingRoundDate ?? seasonStart ?? undefined}
+            max={existingRoundDate ?? seasonEnd ?? undefined}
+            style={tabularNums}
+          />
         </Field>
         <Field label="Lobby opens" style={isMobile ? { width: '100%' } : { flex: 1.2 }}>
           <View style={{ flexDirection: 'row', gap: 8 }}>
