@@ -4,9 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
 import { Diamond } from '../../components/Diamond';
+import { Spinner } from '../../components/Spinner';
 import { color, fontFamily } from '../../theme/tokens';
+import { formatRelativeTime } from '../../lib/time';
 import { useSession } from '../../lib/hooks/useSession';
 import { registerWebPush, usePushRegistration } from '../../lib/hooks/usePushRegistration';
+import { AppNotification, useMarkAllNotificationsRead, useMarkNotificationRead, useNotifications } from '../../lib/api/notifications';
 
 const isWeb = Platform.OS === 'web';
 
@@ -19,6 +22,9 @@ const isWeb = Platform.OS === 'web';
 export default function NotificationSettings() {
   const { userId } = useSession();
   const [status, setStatus] = useState<NotificationPermission | Notifications.PermissionStatus | null>(null);
+  const { data: notifications, isLoading: notificationsLoading } = useNotifications(userId);
+  const markRead = useMarkNotificationRead(userId);
+  const markAllRead = useMarkAllNotificationsRead(userId);
 
   usePushRegistration(userId);
 
@@ -41,6 +47,12 @@ export default function NotificationSettings() {
   }
 
   const granted = status === 'granted';
+  const unreadCount = (notifications ?? []).filter((n) => !n.read).length;
+
+  async function handleTapNotification(n: AppNotification) {
+    if (!n.read) markRead.mutate(n.id);
+    if (n.url) router.push(n.url as any);
+  }
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -54,6 +66,43 @@ export default function NotificationSettings() {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        <View style={{ gap: 12 }}>
+          <View style={styles.inboxHeaderRow}>
+            <Text style={styles.sectionLabel}>Inbox</Text>
+            {unreadCount > 0 && (
+              <Pressable onPress={() => markAllRead.mutate()}>
+                <Text style={styles.markAllLabel}>Mark all read</Text>
+              </Pressable>
+            )}
+          </View>
+
+          {notificationsLoading ? (
+            <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+              <Spinner size={18} />
+            </View>
+          ) : !notifications || notifications.length === 0 ? (
+            <Text style={styles.emptyInboxText}>Nothing yet — game and match updates will show up here.</Text>
+          ) : (
+            <View style={{ gap: 1, backgroundColor: color.hairline, borderWidth: 1, borderColor: color.hairline }}>
+              {notifications.map((n) => (
+                <Pressable key={n.id} onPress={() => handleTapNotification(n)}>
+                  {({ hovered }: any) => (
+                    <View style={[styles.inboxRow, hovered && { backgroundColor: 'rgba(242,241,236,0.04)' }]}>
+                      {!n.read && <View style={styles.unreadDot} />}
+                      <View style={{ flex: 1, gap: 3, minWidth: 0 }}>
+                        <Text style={[styles.inboxTitle, !n.read && { color: color.textPrimary }]}>{n.title}</Text>
+                        <Text style={styles.inboxBody} numberOfLines={2}>{n.body}</Text>
+                        <Text style={styles.inboxTime}>{formatRelativeTime(n.createdAt)}</Text>
+                      </View>
+                    </View>
+                  )}
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
+
+        <Text style={[styles.sectionLabel, { marginTop: 6 }]}>Push settings</Text>
         <View style={styles.statusBox}>
           <View style={styles.statusRow}>
             <View style={[styles.statusDot, { backgroundColor: granted ? color.verified : color.textMuted }]} />
@@ -125,6 +174,15 @@ const styles = StyleSheet.create({
   back: { fontSize: 18, color: color.textMuted },
   title: { fontFamily: fontFamily.rajdhaniBold, fontSize: 28, letterSpacing: 0.01 * 28, color: color.textPrimary },
   content: { padding: 22, paddingTop: 18, gap: 14 },
+  sectionLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 11, letterSpacing: 0.12 * 11, textTransform: 'uppercase', color: color.textMuted },
+  inboxHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  markAllLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.textMuted },
+  emptyInboxText: { fontFamily: fontFamily.interRegular, fontSize: 13, lineHeight: 18, color: color.textMuted, borderWidth: 1, borderColor: color.hairline, backgroundColor: color.panel, padding: 16 },
+  inboxRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start', padding: 14, paddingHorizontal: 16, backgroundColor: color.panel },
+  unreadDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5, backgroundColor: color.ember },
+  inboxTitle: { fontFamily: fontFamily.interSemiBold, fontSize: 14, color: color.textMuted },
+  inboxBody: { fontFamily: fontFamily.interRegular, fontSize: 12, lineHeight: 17, color: color.textMuted },
+  inboxTime: { fontFamily: fontFamily.interRegular, fontSize: 10, color: color.textMuted, marginTop: 2 },
   statusBox: { borderWidth: 1, borderColor: color.hairline, backgroundColor: color.panel, padding: 16, gap: 12 },
   statusRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8 },
   statusDot: { width: 8, height: 8, borderRadius: 4, marginTop: 5 },

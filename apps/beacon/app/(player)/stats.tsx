@@ -3,6 +3,7 @@ import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'r
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import { BottomNav } from '../../components/BottomNav';
 import { CornerCut } from '../../components/CornerCut';
 import { Diamond } from '../../components/Diamond';
@@ -12,12 +13,14 @@ import { formatRelativeTime } from '../../lib/time';
 import { useCountdownLabel } from '../../lib/hooks/useCountdown';
 import { useSession } from '../../lib/hooks/useSession';
 import { useDashboard } from '../../lib/api/dashboard';
+import { useUnreadNotificationCount } from '../../lib/api/notifications';
 
 // Reference: Beacon 02 Stats Dashboard.dc.html — the landing screen right
 // after account verification.
 export default function StatsDashboard() {
   const { userId } = useSession();
   const { data, isLoading, refetch, isRefetching } = useDashboard(userId);
+  const { data: unreadCount } = useUnreadNotificationCount(userId);
   const queryClient = useQueryClient();
   const [syncedAgo, setSyncedAgo] = useState<string | null>(null);
 
@@ -102,6 +105,18 @@ export default function StatsDashboard() {
               {league ? `${league.teamName} · ${league.role === 'captain' ? 'Captain' : 'Member'}` : 'No team yet'}
             </Text>
           </View>
+          <Pressable onPress={() => router.push('/(player)/notifications')}>
+            {({ hovered }: any) => (
+              <View style={styles.bellButton}>
+                <Ionicons name="notifications-outline" size={22} color={hovered ? color.textPrimary : color.textMuted} />
+                {!!unreadCount && (
+                  <View style={styles.bellBadge}>
+                    <Text style={styles.bellBadgeLabel}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </Pressable>
         </View>
 
         {data.isVerified && (
@@ -264,6 +279,20 @@ const styles = StyleSheet.create({
   },
   verifiedChipLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.12 * 9, color: color.verified },
   identityMeta: { fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted },
+  bellButton: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
+  bellBadge: {
+    position: 'absolute',
+    top: 2,
+    right: 2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    backgroundColor: color.ember,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellBadgeLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, color: color.base, ...tabularNums },
   sourceLine: {
     flexDirection: 'row',
     alignItems: 'center',

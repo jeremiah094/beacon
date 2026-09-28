@@ -99,6 +99,16 @@ Deno.serve(async (req: Request) => {
           data: { url: `/games/${game.id}/lobby` },
         };
 
+  // In-app inbox row for every recipient, independent of whether they have
+  // any push token at all — the reliable fallback for players who never
+  // granted OS notification permission (or later revoked it).
+  const { error: notifyInsertError } = await supabase
+    .from("notifications")
+    .insert(profileIds.map((profile_id) => ({ profile_id, title, body: message, url: data.url })));
+  if (notifyInsertError) {
+    console.error("match-notify: failed to insert in-app notifications", notifyInsertError);
+  }
+
   let sent = 0;
   const staleTokens: string[] = [];
   const ticketErrors: { token: string; status: string; message?: string; error?: string }[] = [];
