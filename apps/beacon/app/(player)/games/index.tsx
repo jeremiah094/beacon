@@ -12,14 +12,20 @@ import { useCountdownLabel } from '../../../lib/hooks/useCountdown';
 import { getGamePhase } from '../../../lib/time';
 import { useSession } from '../../../lib/hooks/useSession';
 import { useActiveTeam } from '../../../lib/hooks/useActiveTeam';
+import { useActiveTitle } from '../../../lib/hooks/useActiveTitle';
 import { useMyTeams } from '../../../lib/api/teams';
+import { useTitleId } from '../../../lib/api/titles';
 import { UpcomingGame, useToggleGameMute, useUpcomingGames } from '../../../lib/api/games';
 
 // Reference: Beacon 07 Upcoming Games.dc.html — no "vs", every game states
-// "20 teams · one lobby" instead.
+// "20 teams · one lobby" instead. Battle-royale-only for now (games/results
+// are the Apex-shaped tables) — a head-to-head title lands here empty until
+// the fixtures equivalent of this screen exists.
 export default function UpcomingGames() {
   const { userId } = useSession();
-  const { data: myTeams } = useMyTeams(userId);
+  const { activeTitleSlug } = useActiveTitle();
+  const { data: activeTitleId } = useTitleId(activeTitleSlug ?? 'apex');
+  const { data: myTeams } = useMyTeams(userId, activeTitleId ?? undefined);
   const { activeTeamId } = useActiveTeam((myTeams ?? []).map((t) => t.id));
   const { data, isLoading } = useUpcomingGames(activeTeamId ?? undefined, userId);
   const toggleMute = useToggleGameMute(activeTeamId ?? undefined, userId);

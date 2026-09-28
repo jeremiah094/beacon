@@ -14,11 +14,12 @@ export type LeagueSummary = {
   isOpen: boolean;
 };
 
-async function fetchLeagues(): Promise<LeagueSummary[]> {
+async function fetchLeagues(titleSlug: string): Promise<LeagueSummary[]> {
   const { data: leagues } = await supabase
     .from('leagues')
-    .select('id, name, teams_per_lobby, season_label, season_start, season_end, entry_rules, titles(name)')
-    .eq('status', 'published');
+    .select('id, name, teams_per_lobby, season_label, season_start, season_end, entry_rules, titles!inner(name, slug)')
+    .eq('status', 'published')
+    .eq('titles.slug', titleSlug);
 
   if (!leagues || leagues.length === 0) return [];
 
@@ -50,8 +51,8 @@ async function fetchLeagues(): Promise<LeagueSummary[]> {
   });
 }
 
-export function useLeagues() {
-  return useQuery({ queryKey: ['leagues'], queryFn: fetchLeagues });
+export function useLeagues(titleSlug: string = 'apex') {
+  return useQuery({ queryKey: ['leagues', titleSlug], queryFn: () => fetchLeagues(titleSlug) });
 }
 
 async function fetchLeagueName(leagueId: string): Promise<string | null> {

@@ -6,7 +6,10 @@ import { CornerCut } from '../../../components/CornerCut';
 import { Spinner } from '../../../components/Spinner';
 import { color, fontFamily } from '../../../theme/tokens';
 import { useSession } from '../../../lib/hooks/useSession';
+import { useActiveTitle } from '../../../lib/hooks/useActiveTitle';
 import { TeamSearchResult, useMyPendingJoinRequests, useMyTeams, useRequestToJoinTeam, useSearchTeams } from '../../../lib/api/teams';
+import { useTitleId } from '../../../lib/api/titles';
+import { titleMeta } from '../../../lib/titles';
 
 // Search-to-join, so a player who can't find their real team doesn't end
 // up creating a duplicate — the whole point of this screen existing.
@@ -15,14 +18,17 @@ import { TeamSearchResult, useMyPendingJoinRequests, useMyTeams, useRequestToJoi
 // approval elsewhere in the app.
 export default function TeamSearch() {
   const { userId } = useSession();
+  const { activeTitleSlug } = useActiveTitle();
+  const title = titleMeta(activeTitleSlug ?? 'apex');
+  const { data: titleId } = useTitleId(title.slug);
   const [query, setQuery] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [requestedIds, setRequestedIds] = useState<string[]>([]);
 
-  const { data: myTeams } = useMyTeams(userId);
+  const { data: myTeams } = useMyTeams(userId, titleId ?? undefined);
   const myTeamIds = (myTeams ?? []).map((t) => t.id);
   const { data: pending } = useMyPendingJoinRequests(userId);
-  const { data: results, isLoading } = useSearchTeams(query, myTeamIds);
+  const { data: results, isLoading } = useSearchTeams(query, myTeamIds, titleId ?? undefined);
   const requestJoin = useRequestToJoinTeam(userId);
 
   const pendingSet = new Set([...(pending ?? []), ...requestedIds]);

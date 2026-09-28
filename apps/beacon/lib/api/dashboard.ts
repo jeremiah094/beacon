@@ -44,19 +44,16 @@ export type DashboardData = {
   hasAnyTeam: boolean;
 };
 
-async function fetchDashboard(userId: string): Promise<DashboardData> {
+async function fetchDashboard(userId: string, titleSlug: string): Promise<DashboardData> {
   const { data: profile } = await supabase.from('profiles').select('gamertag, display_name').eq('id', userId).single();
 
-  // Home is Apex-only for now — a title-aware version lands with the
-  // multi-game switcher (game_accounts holds one row per title a player
-  // has linked).
-  const { data: apexTitle } = await supabase.from('titles').select('id').eq('slug', 'apex').single();
-  const { data: accountRow } = apexTitle
+  const { data: activeTitle } = await supabase.from('titles').select('id').eq('slug', titleSlug).single();
+  const { data: accountRow } = activeTitle
     ? await supabase
         .from('game_accounts')
         .select('verified_at, rank_name, rank_score, kd, wins, kills, most_played_legend, fetched_at')
         .eq('profile_id', userId)
-        .eq('title_id', apexTitle.id)
+        .eq('title_id', activeTitle.id)
         .maybeSingle()
     : { data: null };
 
@@ -72,10 +69,16 @@ async function fetchDashboard(userId: string): Promise<DashboardData> {
       }
     : null;
 
-  const { data: memberships } = await supabase
-    .from('team_members')
-    .select('team_id, role, teams(name)')
-    .eq('profile_id', userId);
+  // teams!inner + the title_id filter keeps this scoped to the active
+  // title's teams — a player with both an Apex and a Valorant team
+  // shouldn't have one game's league surface while viewing the other's home.
+  const { data: memberships } = activeTitle
+    ? await supabase
+        .from('team_members')
+        .select('team_id, role, teams!inner(name, title_id)')
+        .eq('profile_id', userId)
+        .eq('teams.title_id', activeTitle.id)
+    : { data: null };
 
   const hasAnyTeam = !!memberships && memberships.length > 0;
   let league: DashboardLeague | null = null;
@@ -204,10 +207,10 @@ async function fetchDashboard(userId: string): Promise<DashboardData> {
   };
 }
 
-export function useDashboard(userId: string | undefined) {
+export function useDashboard(userId: string | undefined, titleSlug: string = 'apex') {
   return useQuery({
-    queryKey: ['dashboard', userId],
-    queryFn: () => fetchDashboard(userId as string),
+    queryKey: ['dashboard', userId, titleSlug],
+    queryFn: () => fetchDashboard(userId as string, titleSlug),
     enabled: !!userId,
   });
 }

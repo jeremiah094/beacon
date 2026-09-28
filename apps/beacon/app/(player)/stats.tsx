@@ -8,18 +8,23 @@ import { BottomNav } from '../../components/BottomNav';
 import { CornerCut } from '../../components/CornerCut';
 import { Diamond } from '../../components/Diamond';
 import { Spinner } from '../../components/Spinner';
-import { color, fontFamily, tabularNums } from '../../theme/tokens';
+import { color, fontFamily, tabularNums, titleColors } from '../../theme/tokens';
 import { formatRelativeTime } from '../../lib/time';
 import { useCountdownLabel } from '../../lib/hooks/useCountdown';
 import { useSession } from '../../lib/hooks/useSession';
+import { useActiveTitle } from '../../lib/hooks/useActiveTitle';
 import { useDashboard } from '../../lib/api/dashboard';
 import { useUnreadNotificationCount } from '../../lib/api/notifications';
+import { titleMeta } from '../../lib/titles';
 
 // Reference: Beacon 02 Stats Dashboard.dc.html — the landing screen right
 // after account verification.
 export default function StatsDashboard() {
   const { userId } = useSession();
-  const { data, isLoading, refetch, isRefetching } = useDashboard(userId);
+  const { activeTitleSlug } = useActiveTitle();
+  const title = titleMeta(activeTitleSlug ?? 'apex');
+  const accent = titleColors(title.slug);
+  const { data, isLoading, refetch, isRefetching } = useDashboard(userId, title.slug);
   const { data: unreadCount } = useUnreadNotificationCount(userId);
   const queryClient = useQueryClient();
   const [syncedAgo, setSyncedAgo] = useState<string | null>(null);
@@ -85,6 +90,16 @@ export default function StatsDashboard() {
           <RefreshControl refreshing={isRefetching} onRefresh={handleRefresh} tintColor={color.textMuted} titleColor={color.textMuted} />
         }
       >
+        <Pressable onPress={() => router.push('/(auth)/choose-game')} style={styles.gameSwitchRow}>
+          {({ hovered }: any) => (
+            <View style={[styles.gameSwitchInner, hovered && { borderColor: accent.accentBorder }]}>
+              <View style={[styles.gameSwitchDot, { backgroundColor: accent.accent }]} />
+              <Text style={styles.gameSwitchLabel}>{title.name.toUpperCase()}</Text>
+              <Text style={styles.gameSwitchChevron}>SWITCH →</Text>
+            </View>
+          )}
+        </Pressable>
+
         <View style={styles.identityRow}>
           <CornerCut cut={12} fill="none" strokeColor={color.hairlineStrong} style={styles.avatar}>
             <View style={styles.avatarInner}>
@@ -123,7 +138,7 @@ export default function StatsDashboard() {
           <View style={styles.sourceLine}>
             <View style={styles.sourceLeft}>
               <Diamond size={8} color={color.verified} />
-              <Text style={styles.sourceLabel}>READ FROM YOUR EA ACCOUNT</Text>
+              <Text style={styles.sourceLabel}>{title.slug === 'apex' ? 'READ FROM YOUR EA ACCOUNT' : 'ACCOUNT VERIFIED'}</Text>
             </View>
             <Pressable onPress={handleRefresh} style={styles.syncRow}>
               {isRefetching && <Spinner size={10} />}
@@ -261,6 +276,19 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: color.base },
   loadingBox: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   scroll: { padding: 22, paddingTop: 12, gap: 24 },
+  gameSwitchRow: { alignSelf: 'flex-start' },
+  gameSwitchInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: color.hairline,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+  },
+  gameSwitchDot: { width: 7, height: 7, borderRadius: 3.5 },
+  gameSwitchLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.1 * 10, color: color.textPrimary },
+  gameSwitchChevron: { fontFamily: fontFamily.interMedium, fontSize: 10, color: color.textMuted },
   identityRow: { flexDirection: 'row', gap: 14, alignItems: 'center' },
   avatar: { width: 56, height: 56 },
   avatarInner: { flex: 1, alignItems: 'center', justifyContent: 'center' },

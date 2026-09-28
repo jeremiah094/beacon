@@ -18,6 +18,9 @@ type HudPanelProps = Omit<ViewProps, 'style'> & {
    * warning takes on (design system §7, "locking" state). 'verified' = the
    * green border an account-linked/success panel takes on (screen 01). */
   variant?: 'default' | 'ember' | 'verified';
+  /** Overrides the variant's border color — for per-title accent borders
+   * (titleColors().accentBorder) where none of the three fixed variants fit. */
+  strokeColor?: string;
   contentStyle?: StyleProp<ViewStyle>;
   style?: StyleProp<ViewStyle>;
 };
@@ -29,11 +32,11 @@ const strokeForVariant: Record<NonNullable<HudPanelProps['variant']>, string> = 
 };
 
 /** Corner-cut "HUD panel" — stat and match-day cards (design system §6). */
-export function HudPanel({ variant = 'default', style, contentStyle, children, ...rest }: HudPanelProps) {
+export function HudPanel({ variant = 'default', style, strokeColor, contentStyle, children, ...rest }: HudPanelProps) {
   return (
     <CornerCut
       style={[styles.hudOuter, style]}
-      strokeColor={strokeForVariant[variant]}
+      strokeColor={strokeColor ?? strokeForVariant[variant]}
       fill={color.panel}
       {...rest}
     >

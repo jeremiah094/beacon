@@ -8,12 +8,16 @@ import { Spinner } from '../../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../../theme/tokens';
 import { formatDateRange } from '../../../lib/time';
 import { LeagueSummary, useLeagues } from '../../../lib/api/leagues';
+import { useActiveTitle } from '../../../lib/hooks/useActiveTitle';
+import { titleMeta } from '../../../lib/titles';
 
 // Reference: Beacon 03 League Hub.dc.html
 type Filter = 'all' | 'open' | 'full';
 
 export default function LeagueHub() {
-  const { data: leagues, isLoading } = useLeagues();
+  const { activeTitleSlug } = useActiveTitle();
+  const title = titleMeta(activeTitleSlug ?? 'apex');
+  const { data: leagues, isLoading } = useLeagues(title.slug);
   const [filter, setFilter] = useState<Filter>('all');
 
   const all = leagues ?? [];
@@ -35,7 +39,7 @@ export default function LeagueHub() {
             </Pressable>
             <Text style={styles.title}>BROWSE LEAGUES</Text>
           </View>
-          <Text style={styles.subtitle}>Ireland · battle royale · 20 teams per lobby</Text>
+          <Text style={styles.subtitle}>Ireland · {title.name} · {title.tagline}</Text>
         </View>
 
         <View style={styles.filterRow}>

@@ -13,11 +13,12 @@ export type MyTeam = {
   pendingJoinRequestCount: number;
 };
 
-async function fetchMyTeams(userId: string): Promise<MyTeam[]> {
+async function fetchMyTeams(userId: string, titleId: string): Promise<MyTeam[]> {
   const { data: memberships } = await supabase
     .from('team_members')
-    .select('team_id, role, teams(id, name, tag)')
-    .eq('profile_id', userId);
+    .select('team_id, role, teams!inner(id, name, tag, title_id)')
+    .eq('profile_id', userId)
+    .eq('teams.title_id', titleId);
 
   if (!memberships || memberships.length === 0) return [];
 
@@ -107,26 +108,23 @@ function ordinalSuffix(n: number) {
   return s[(v - 20) % 10] || s[v] || s[0];
 }
 
-export function useMyTeams(userId: string | undefined) {
+export function useMyTeams(userId: string | undefined, titleId: string | undefined) {
   return useQuery({
-    queryKey: ['myTeams', userId],
-    queryFn: () => fetchMyTeams(userId as string),
-    enabled: !!userId,
+    queryKey: ['myTeams', userId, titleId],
+    queryFn: () => fetchMyTeams(userId as string, titleId as string),
+    enabled: !!userId && !!titleId,
   });
 }
 
-export function useCreateTeam(userId: string | undefined) {
+export function useCreateTeam(userId: string | undefined, titleId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ name, tag, joinLeagueId }: { name: string; tag: string; joinLeagueId?: string }) => {
       if (!userId) throw new Error('Not signed in');
-      // Apex is the only title with a create-team UI so far — a title
-      // picker lands with the next title's build.
-      const { data: apexTitle } = await supabase.from('titles').select('id').eq('slug', 'apex').single();
-      if (!apexTitle) throw new Error('Could not resolve the Apex Legends title — try again.');
+      if (!titleId) throw new Error('Could not resolve the active game — try again.');
       const { data: team, error: teamError } = await supabase
         .from('teams')
-        .insert({ name, tag: tag || null, captain_id: userId, title_id: apexTitle.id })
+        .insert({ name, tag: tag || null, captain_id: userId, title_id: titleId })
         .select('id')
         .single();
       if (teamError?.code === '23505') {
@@ -180,18 +178,24 @@ export type TeamSearchResult = { id: string; name: string; tag: string | null; i
  * authenticated user — name/tag aren't sensitive, and finding a team you
  * don't already share a league or membership with is the whole point of
  * search-to-join. */
-export function useSearchTeams(query: string, excludeTeamIds: string[]) {
+export function useSearchTeams(query: string, excludeTeamIds: string[], titleId: string | undefined) {
   const trimmed = query.trim();
   return useQuery({
-    queryKey: ['teamSearch', trimmed],
+    queryKey: ['teamSearch', trimmed, titleId],
     queryFn: async (): Promise<TeamSearchResult[]> => {
-      const { data, error } = await supabase.from('teams').select('id, name, tag').ilike('name', `%${trimmed}%`).order('name').limit(20);
+      const { data, error } = await supabase
+        .from('teams')
+        .select('id, name, tag')
+        .eq('title_id', titleId as string)
+        .ilike('name', `%${trimmed}%`)
+        .order('name')
+        .limit(20);
       if (error) throw error;
       return (data ?? [])
         .filter((t) => !excludeTeamIds.includes(t.id))
         .map((t) => ({ id: t.id, name: t.name, tag: t.tag, initials: (t.tag || t.name).slice(0, 2).toUpperCase() }));
     },
-    enabled: trimmed.length >= 2,
+    enabled: trimmed.length >= 2 && !!titleId,
   });
 }
 

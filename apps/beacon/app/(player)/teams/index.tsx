@@ -9,13 +9,19 @@ import { Spinner } from '../../../components/Spinner';
 import { color, fontFamily } from '../../../theme/tokens';
 import { useSession } from '../../../lib/hooks/useSession';
 import { useActiveTeam } from '../../../lib/hooks/useActiveTeam';
+import { useActiveTitle } from '../../../lib/hooks/useActiveTitle';
 import { MyTeam, useCreateTeam, useMyTeams, useRegisterTeamForLeague } from '../../../lib/api/teams';
 import { useLeagueName } from '../../../lib/api/leagues';
+import { useTitleId } from '../../../lib/api/titles';
+import { titleMeta } from '../../../lib/titles';
 
 // Reference: Beacon 04 My Teams.dc.html
 export default function MyTeams() {
   const { userId } = useSession();
-  const { data: teams, isLoading } = useMyTeams(userId);
+  const { activeTitleSlug } = useActiveTitle();
+  const title = titleMeta(activeTitleSlug ?? 'apex');
+  const { data: titleId } = useTitleId(title.slug);
+  const { data: teams, isLoading } = useMyTeams(userId, titleId ?? undefined);
   const { joinLeagueId, create } = useLocalSearchParams<{ joinLeagueId?: string; create?: string }>();
   const { data: joinLeagueName } = useLeagueName(joinLeagueId);
   const list = teams ?? [];
@@ -24,7 +30,7 @@ export default function MyTeams() {
   const [name, setName] = useState('');
   const [tag, setTag] = useState('');
   const [createError, setCreateError] = useState<string | null>(null);
-  const createTeam = useCreateTeam(userId);
+  const createTeam = useCreateTeam(userId, titleId ?? undefined);
   const registerTeam = useRegisterTeamForLeague(userId);
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [justRegisteredId, setJustRegisteredId] = useState<string | null>(null);
@@ -91,7 +97,7 @@ export default function MyTeams() {
               <View key={i} style={[styles.slotTick, { backgroundColor: i < list.length ? color.textPrimary : 'rgba(242,241,236,0.16)' }]} />
             ))}
           </View>
-          <Text style={styles.slotLabel}>{list.length} of 3 team slots used</Text>
+          <Text style={styles.slotLabel}>{list.length} of 3 {title.name} team slots used</Text>
         </View>
       </View>
 

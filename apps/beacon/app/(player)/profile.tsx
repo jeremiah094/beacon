@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -8,34 +8,30 @@ import { BottomNav } from '../../components/BottomNav';
 import { CornerCut } from '../../components/CornerCut';
 import { Diamond } from '../../components/Diamond';
 import { HudPanel } from '../../components/Panel';
-import { SegmentedControl } from '../../components/SegmentedControl';
 import { StatGrid } from '../../components/StatGrid';
 import { Spinner } from '../../components/Spinner';
-import { color, fontFamily } from '../../theme/tokens';
+import { color, fontFamily, titleColors } from '../../theme/tokens';
 import { formatRelativeTime } from '../../lib/time';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/hooks/useSession';
+import { useActiveTitle } from '../../lib/hooks/useActiveTitle';
 import { useDashboard } from '../../lib/api/dashboard';
-import { ApexPlatform, PLATFORM_OPTIONS, linkApexId } from '../../lib/api/apexLink';
 import { deleteAccount } from '../../lib/api/account';
 import { PasswordConfirmPanel } from '../../components/PasswordConfirmPanel';
+import { titleMeta } from '../../lib/titles';
 
 // Not one of BUILD.md's 16 reference screens — added alongside the bottom
-// nav as the account/settings hub every tab bar needs. Reuses the same
-// EA/Apex linking flow as screen 01, for accounts that used "Skip for
-// now" there and want to link later without signing out first.
-type IdType = 'ea' | 'apex';
-
+// nav as the account/settings hub every tab bar needs. Linking (any title)
+// now goes through the shared (auth)/link-account screen instead of a
+// duplicated inline form, for accounts that skipped it earlier.
 export default function Profile() {
   const { session, userId } = useSession();
-  const { data, isLoading } = useDashboard(userId);
+  const { activeTitleSlug } = useActiveTitle();
+  const title = titleMeta(activeTitleSlug ?? 'apex');
+  const accent = titleColors(title.slug);
+  const { data, isLoading } = useDashboard(userId, title.slug);
   const queryClient = useQueryClient();
 
-  const [idType, setIdType] = useState<IdType>('ea');
-  const [platform, setPlatform] = useState<ApexPlatform>('PC');
-  const [gamerId, setGamerId] = useState('');
-  const [linking, setLinking] = useState(false);
-  const [linkError, setLinkError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -46,23 +42,6 @@ export default function Profile() {
       setIsAdmin(!!data?.is_admin);
     });
   }, [userId]);
-
-  const isEa = idType === 'ea';
-  const linkReady = gamerId.trim().length >= 3;
-
-  async function handleLink() {
-    if (!linkReady) return;
-    setLinking(true);
-    setLinkError(null);
-    const result = await linkApexId(gamerId.trim(), platform);
-    setLinking(false);
-    if (result.ok) {
-      setGamerId('');
-      queryClient.invalidateQueries({ queryKey: ['dashboard', userId] });
-    } else {
-      setLinkError(result.message);
-    }
-  }
 
   async function handleSignOut() {
     const confirmed = await new Promise<boolean>((resolve) => {
@@ -117,6 +96,16 @@ export default function Profile() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
+        <Pressable onPress={() => router.push('/(auth)/choose-game')} style={styles.gameSwitchRow}>
+          {({ hovered }: any) => (
+            <View style={[styles.gameSwitchInner, hovered && { borderColor: accent.accentBorder }]}>
+              <View style={[styles.gameSwitchDot, { backgroundColor: accent.accent }]} />
+              <Text style={styles.gameSwitchLabel}>{title.name.toUpperCase()}</Text>
+              <Text style={styles.gameSwitchChevron}>SWITCH →</Text>
+            </View>
+          )}
+        </Pressable>
+
         <View style={styles.identityRow}>
           <CornerCut cut={12} fill="none" strokeColor={color.hairlineStrong} style={styles.avatar}>
             <View style={styles.avatarInner}>
@@ -133,72 +122,33 @@ export default function Profile() {
           <HudPanel variant="verified" contentStyle={{ padding: 18, gap: 14 }}>
             <View style={styles.verifiedHeaderRow}>
               <Diamond size={8} color={color.verified} />
-              <Text style={styles.verifiedHeaderLabel}>EA VERIFIED</Text>
+              <Text style={styles.verifiedHeaderLabel}>{title.slug === 'apex' ? 'EA VERIFIED' : `${title.name.toUpperCase()} VERIFIED`}</Text>
             </View>
-            <StatGrid
-              stats={[
-                { value: data.stats?.kd != null ? data.stats.kd.toFixed(2) : '—', label: 'K/D' },
-                { value: data.stats?.wins != null ? String(data.stats.wins) : '—', label: 'WINS' },
-                { value: data.stats?.rankName ?? '—', label: 'RANK' },
-              ]}
-            />
+            {(data.stats?.kd != null || data.stats?.wins != null || data.stats?.rankName) && (
+              <StatGrid
+                stats={[
+                  { value: data.stats?.kd != null ? data.stats.kd.toFixed(2) : '—', label: 'K/D' },
+                  { value: data.stats?.wins != null ? String(data.stats.wins) : '—', label: 'WINS' },
+                  { value: data.stats?.rankName ?? '—', label: 'RANK' },
+                ]}
+              />
+            )}
             <Text style={styles.helpText}>
-              {data.stats?.fetchedAt ? `Synced ${formatRelativeTime(data.stats.fetchedAt)}` : 'Stats read from your linked account.'}
+              {data.stats?.fetchedAt ? `Synced ${formatRelativeTime(data.stats.fetchedAt)}` : 'Account verified.'}
             </Text>
           </HudPanel>
         ) : (
-          <HudPanel contentStyle={{ padding: 20, gap: 16 }}>
-            <Text style={[styles.eyebrow, { color: color.textPrimary }]}>Link your gaming ID</Text>
+          <HudPanel contentStyle={{ padding: 20, gap: 14 }} strokeColor={accent.accentBorder}>
+            <Text style={[styles.eyebrow, { color: color.textPrimary }]}>Link your {title.name} account</Text>
             <Text style={styles.linkCopy}>
-              You skipped this when you signed up. Link it now so your stats are read, not entered by hand.
+              {title.verificationAvailable
+                ? "You skipped this earlier — link it now so your stats are read, not entered by hand."
+                : `Automatic verification for ${title.name} is coming soon.`}
             </Text>
-
-            <SegmentedControl
-              height={44}
-              options={[
-                { value: 'ea', label: 'EA Play ID' },
-                { value: 'apex', label: 'Apex Legends ID' },
-              ]}
-              value={idType}
-              onChange={setIdType}
-            />
-
-            <View style={{ gap: 8 }}>
-              <Text style={styles.platformLabel}>Platform</Text>
-              <SegmentedControl height={40} options={PLATFORM_OPTIONS} value={platform} onChange={setPlatform} />
-            </View>
-
-            <TextInput
-              value={gamerId}
-              onChangeText={setGamerId}
-              placeholder={isEa ? 'EA Play ID · e.g. VipersKane_IE' : 'Apex Legends ID · e.g. VipersKane'}
-              autoCapitalize="none"
-              placeholderTextColor={color.fillPlaceholder}
-              style={[styles.bareInput, { backgroundColor: color.base }]}
-            />
-
-            {linkError && (
-              <View style={styles.noteRow}>
-                <View style={styles.noteBar} />
-                <Text style={styles.noteText}>{linkError}</Text>
-              </View>
-            )}
-
-            <Pressable onPress={handleLink} disabled={!linkReady || linking}>
+            <Pressable onPress={() => router.push({ pathname: '/(auth)/link-account', params: { title: title.slug } })}>
               {({ pressed, hovered }: any) => (
-                <View
-                  style={[
-                    styles.linkButton,
-                    !linkReady
-                      ? { backgroundColor: color.fillMuted, borderColor: color.fillMutedBorder }
-                      : { backgroundColor: pressed ? color.fillActive : hovered ? color.fillHover : color.textPrimary, borderColor: color.textPrimary },
-                  ]}
-                >
-                  {linking ? (
-                    <Spinner size={14} strokeColor={color.base} />
-                  ) : (
-                    <Text style={[styles.linkButtonLabel, { color: linkReady ? color.base : 'rgba(242,241,236,0.35)' }]}>Link account</Text>
-                  )}
+                <View style={[styles.linkButton, { backgroundColor: pressed ? color.fillActive : hovered ? color.fillHover : color.textPrimary, borderColor: color.textPrimary }]}>
+                  <Text style={[styles.linkButtonLabel, { color: color.base }]}>{title.verificationAvailable ? 'Link account' : 'Browse leagues instead'}</Text>
                 </View>
               )}
             </Pressable>
@@ -325,20 +275,19 @@ const styles = StyleSheet.create({
   helpText: { fontFamily: fontFamily.interRegular, fontSize: 12, lineHeight: 17, color: color.textMuted },
   eyebrow: { fontFamily: fontFamily.interSemiBold, fontSize: 11, letterSpacing: 0.16 * 11, textTransform: 'uppercase', color: color.textMuted },
   linkCopy: { fontFamily: fontFamily.interRegular, fontSize: 13, lineHeight: 19.5, color: color.textMuted },
-  platformLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.14 * 10, textTransform: 'uppercase', color: color.textMuted },
-  bareInput: {
-    height: 50,
-    backgroundColor: color.panel,
+  gameSwitchRow: { alignSelf: 'flex-start' },
+  gameSwitchInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     borderWidth: 1,
-    borderColor: color.hairlineInput,
-    color: color.textPrimary,
-    fontFamily: fontFamily.interRegular,
-    fontSize: 15,
-    paddingHorizontal: 14,
+    borderColor: color.hairline,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
   },
-  noteRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
-  noteBar: { width: 3, alignSelf: 'stretch', backgroundColor: 'rgba(242,241,236,0.35)' },
-  noteText: { flex: 1, fontFamily: fontFamily.interRegular, fontSize: 12, lineHeight: 17, color: color.textMuted },
+  gameSwitchDot: { width: 7, height: 7, borderRadius: 3.5 },
+  gameSwitchLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.1 * 10, color: color.textPrimary },
+  gameSwitchChevron: { fontFamily: fontFamily.interMedium, fontSize: 10, color: color.textMuted },
   linkButton: { height: 48, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   linkButtonLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 14 },
   section: { gap: 10 },
