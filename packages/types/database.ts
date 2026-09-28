@@ -15,6 +15,165 @@ export type Database = {
   }
   public: {
     Tables: {
+      fixture_lineups: {
+        Row: {
+          fixture_id: string
+          profile_id: string
+          team_id: string
+        }
+        Insert: {
+          fixture_id: string
+          profile_id: string
+          team_id: string
+        }
+        Update: {
+          fixture_id?: string
+          profile_id?: string
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixture_lineups_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixture_lineups_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixture_lineups_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fixture_maps: {
+        Row: {
+          away_score: number | null
+          fixture_id: string
+          home_score: number | null
+          id: string
+          map_name: string | null
+          map_number: number
+          winner_team_id: string | null
+        }
+        Insert: {
+          away_score?: number | null
+          fixture_id: string
+          home_score?: number | null
+          id?: string
+          map_name?: string | null
+          map_number: number
+          winner_team_id?: string | null
+        }
+        Update: {
+          away_score?: number | null
+          fixture_id?: string
+          home_score?: number | null
+          id?: string
+          map_name?: string | null
+          map_number?: number
+          winner_team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixture_maps_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixture_maps_winner_team_id_fkey"
+            columns: ["winner_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fixtures: {
+        Row: {
+          away_score: number | null
+          away_team_id: string
+          best_of: number
+          home_score: number | null
+          home_team_id: string
+          id: string
+          league_id: string
+          lineup_locked_at: string | null
+          round_number: number
+          scheduled_at: string
+          status: string
+          winner_team_id: string | null
+        }
+        Insert: {
+          away_score?: number | null
+          away_team_id: string
+          best_of?: number
+          home_score?: number | null
+          home_team_id: string
+          id?: string
+          league_id: string
+          lineup_locked_at?: string | null
+          round_number: number
+          scheduled_at: string
+          status?: string
+          winner_team_id?: string | null
+        }
+        Update: {
+          away_score?: number | null
+          away_team_id?: string
+          best_of?: number
+          home_score?: number | null
+          home_team_id?: string
+          id?: string
+          league_id?: string
+          lineup_locked_at?: string | null
+          round_number?: number
+          scheduled_at?: string
+          status?: string
+          winner_team_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixtures_away_team_id_fkey"
+            columns: ["away_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixtures_home_team_id_fkey"
+            columns: ["home_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixtures_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fixtures_winner_team_id_fkey"
+            columns: ["winner_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       game_accounts: {
         Row: {
           external_uid: string
@@ -874,6 +1033,27 @@ export type Database = {
       }
     }
     Views: {
+      h2h_standings: {
+        Row: {
+          league_id: string | null
+          maps_lost: number | null
+          maps_won: number | null
+          series_lost: number | null
+          series_played: number | null
+          series_won: number | null
+          team_id: string | null
+          total_points: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fixtures_league_id_fkey"
+            columns: ["league_id"]
+            isOneToOne: false
+            referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       standings: {
         Row: {
           games_played: number | null
