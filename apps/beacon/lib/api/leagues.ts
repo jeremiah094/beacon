@@ -4,7 +4,7 @@ import { supabase } from '../supabase';
 export type LeagueSummary = {
   id: string;
   name: string;
-  format: string;
+  titleName: string;
   teamsPerLobby: number;
   seasonLabel: string | null;
   seasonStart: string | null;
@@ -17,7 +17,7 @@ export type LeagueSummary = {
 async function fetchLeagues(): Promise<LeagueSummary[]> {
   const { data: leagues } = await supabase
     .from('leagues')
-    .select('id, name, format, teams_per_lobby, season_label, season_start, season_end, entry_rules')
+    .select('id, name, teams_per_lobby, season_label, season_start, season_end, entry_rules, titles(name)')
     .eq('status', 'published');
 
   if (!leagues || leagues.length === 0) return [];
@@ -38,7 +38,7 @@ async function fetchLeagues(): Promise<LeagueSummary[]> {
     return {
       id: l.id,
       name: l.name,
-      format: l.format,
+      titleName: (l.titles as any)?.name ?? 'Beacon',
       teamsPerLobby: l.teams_per_lobby,
       seasonLabel: l.season_label,
       seasonStart: l.season_start,

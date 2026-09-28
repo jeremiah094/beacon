@@ -68,6 +68,12 @@ export function useSaveLeague(leagueId: string | undefined, userId: string | und
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ form, publish }: { form: LeagueFormData; publish: boolean }) => {
+      // Apex is the only title with a create-league UI so far — the title
+      // picker lands with the next title's build. Immutable once set, so
+      // re-sending it on every update (not just create) is harmless.
+      const { data: apexTitle } = await supabase.from('titles').select('id').eq('slug', 'apex').single();
+      if (!apexTitle) throw new Error('Could not resolve the Apex Legends title — try again.');
+
       const payload = {
         name: form.name,
         season_label: form.seasonLabel || null,
@@ -76,7 +82,7 @@ export function useSaveLeague(leagueId: string | undefined, userId: string | und
         season_start: form.seasonStart || null,
         season_end: form.seasonEnd || null,
         entry_rules: form.entryRules || null,
-        format: 'battle_royale',
+        title_id: apexTitle.id,
         ...(publish ? { status: 'published' } : {}),
       };
 

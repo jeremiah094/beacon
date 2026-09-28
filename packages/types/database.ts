@@ -137,7 +137,6 @@ export type Database = {
           created_at: string
           created_by: string | null
           entry_rules: string | null
-          format: string
           id: string
           name: string
           region: string
@@ -146,12 +145,12 @@ export type Database = {
           season_start: string | null
           status: string
           teams_per_lobby: number
+          title_id: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
           entry_rules?: string | null
-          format?: string
           id?: string
           name: string
           region?: string
@@ -160,12 +159,12 @@ export type Database = {
           season_start?: string | null
           status?: string
           teams_per_lobby?: number
+          title_id: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
           entry_rules?: string | null
-          format?: string
           id?: string
           name?: string
           region?: string
@@ -174,6 +173,7 @@ export type Database = {
           season_start?: string | null
           status?: string
           teams_per_lobby?: number
+          title_id?: string
         }
         Relationships: [
           {
@@ -181,6 +181,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leagues_title_id_fkey"
+            columns: ["title_id"]
+            isOneToOne: false
+            referencedRelation: "titles"
             referencedColumns: ["id"]
           },
         ]
@@ -784,6 +791,7 @@ export type Database = {
           id: string
           name: string
           tag: string | null
+          title_id: string
         }
         Insert: {
           captain_id?: string | null
@@ -791,6 +799,7 @@ export type Database = {
           id?: string
           name: string
           tag?: string | null
+          title_id: string
         }
         Update: {
           captain_id?: string | null
@@ -798,6 +807,7 @@ export type Database = {
           id?: string
           name?: string
           tag?: string | null
+          title_id?: string
         }
         Relationships: [
           {
@@ -807,7 +817,50 @@ export type Database = {
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "teams_title_id_fkey"
+            columns: ["title_id"]
+            isOneToOne: false
+            referencedRelation: "titles"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      titles: {
+        Row: {
+          accent: string
+          accent_border: string
+          accent_tint: string
+          format_type: string
+          id: string
+          max_team_members: number
+          name: string
+          roster_size: number
+          slug: string
+        }
+        Insert: {
+          accent: string
+          accent_border: string
+          accent_tint: string
+          format_type: string
+          id?: string
+          max_team_members: number
+          name: string
+          roster_size: number
+          slug: string
+        }
+        Update: {
+          accent?: string
+          accent_border?: string
+          accent_tint?: string
+          format_type?: string
+          id?: string
+          max_team_members?: number
+          name?: string
+          roster_size?: number
+          slug?: string
+        }
+        Relationships: []
       }
     }
     Views: {

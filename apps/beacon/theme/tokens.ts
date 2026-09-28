@@ -124,3 +124,22 @@ export const radius = {
 } as const;
 
 export const minTouch = 48;
+
+// Per-title accent colors — additive to `color` above, not a replacement.
+// `color` stays a single flat palette every existing screen already relies
+// on; only the new multi-game-aware surfaces (league/team/fixture cards, a
+// title switcher) call titleColors() for an inline override. Mirrors the
+// `titles` table exactly (apex === the existing `ember` triad unchanged)
+// so this needs updating only if a title's DB row's colors change.
+export type TitleSlug = 'apex' | 'valorant' | 'cs2' | 'rocket_league';
+
+const TITLE_COLORS: Record<TitleSlug, { accent: string; accentTint: string; accentBorder: string }> = {
+  apex: { accent: color.ember, accentTint: color.emberTint, accentBorder: color.emberBorderSoft },
+  valorant: { accent: '#FF3B5C', accentTint: 'rgba(255,59,92,0.14)', accentBorder: 'rgba(255,59,92,0.4)' },
+  cs2: { accent: '#E89A3C', accentTint: 'rgba(232,154,60,0.14)', accentBorder: 'rgba(232,154,60,0.4)' },
+  rocket_league: { accent: '#3E8EF5', accentTint: 'rgba(62,142,245,0.14)', accentBorder: 'rgba(62,142,245,0.4)' },
+};
+
+export function titleColors(slug: string) {
+  return TITLE_COLORS[slug as TitleSlug] ?? TITLE_COLORS.apex;
+}

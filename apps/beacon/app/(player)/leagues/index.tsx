@@ -124,7 +124,7 @@ function LeagueCard({ league, onJoin }: { league: LeagueSummary; onJoin: () => v
         </View>
 
         <View style={{ gap: 4 }}>
-          <Text style={styles.metaLine}>{league.format}</Text>
+          <Text style={styles.metaLine}>{league.titleName}</Text>
           {league.entryRules ? <Text style={[styles.metaLine, tabularNums]}>{league.entryRules}</Text> : null}
         </View>
 

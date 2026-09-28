@@ -120,9 +120,13 @@ export function useCreateTeam(userId: string | undefined) {
   return useMutation({
     mutationFn: async ({ name, tag, joinLeagueId }: { name: string; tag: string; joinLeagueId?: string }) => {
       if (!userId) throw new Error('Not signed in');
+      // Apex is the only title with a create-team UI so far — a title
+      // picker lands with the next title's build.
+      const { data: apexTitle } = await supabase.from('titles').select('id').eq('slug', 'apex').single();
+      if (!apexTitle) throw new Error('Could not resolve the Apex Legends title — try again.');
       const { data: team, error: teamError } = await supabase
         .from('teams')
-        .insert({ name, tag: tag || null, captain_id: userId })
+        .insert({ name, tag: tag || null, captain_id: userId, title_id: apexTitle.id })
         .select('id')
         .single();
       if (teamError?.code === '23505') {
