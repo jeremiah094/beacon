@@ -43,12 +43,20 @@ export default function LinkAccount() {
   async function runApexLink() {
     setPhase('verifying');
     setError(null);
-    const result = await linkApexId(gamerId.trim(), platform);
-    if (result.ok) {
-      setApexStats(result.stats);
-      setPhase('verified');
-    } else {
-      setError(result.message);
+    try {
+      const result = await linkApexId(gamerId.trim(), platform);
+      if (result.ok) {
+        setApexStats(result.stats);
+        setPhase('verified');
+      } else {
+        setError(result.message);
+        setPhase('form');
+      }
+    } catch {
+      // linkApexId/invoke is designed to always resolve, but a real network
+      // failure (DNS, TLS, offline) can still throw — without this, that
+      // left the screen stuck on "Checking…" forever with no way out.
+      setError("Couldn't reach Beacon's servers. Check your connection and try again.");
       setPhase('form');
     }
   }
@@ -56,12 +64,17 @@ export default function LinkAccount() {
   async function runValorantLink() {
     setPhase('verifying');
     setError(null);
-    const result = await linkValorantId(riotId.trim());
-    if (result.ok) {
-      setValorantStats(result.stats);
-      setPhase('verified');
-    } else {
-      setError(result.message);
+    try {
+      const result = await linkValorantId(riotId.trim());
+      if (result.ok) {
+        setValorantStats(result.stats);
+        setPhase('verified');
+      } else {
+        setError(result.message);
+        setPhase('form');
+      }
+    } catch {
+      setError("Couldn't reach Beacon's servers. Check your connection and try again.");
       setPhase('form');
     }
   }
@@ -116,10 +129,15 @@ export default function LinkAccount() {
                   onChangeText={setRiotId}
                   placeholder="Riot ID · e.g. Player#EUW1"
                   autoCapitalize="none"
+                  autoCorrect={false}
                   placeholderTextColor={color.fillPlaceholder}
                   style={styles.bareInput}
                 />
-                <Text style={styles.helpText}>Found in-game under your profile, or in the Riot Client settings.</Text>
+                {riotId.trim().length > 0 && !riotId.trim().includes('#') ? (
+                  <Text style={styles.warnText}>Needs a # separating your name and tag — e.g. Player#EUW1.</Text>
+                ) : (
+                  <Text style={styles.helpText}>Found in-game under your profile, or in the Riot Client settings.</Text>
+                )}
               </>
             )}
           </HudPanel>
@@ -207,6 +225,7 @@ const styles = StyleSheet.create({
   bodyCopy: { fontFamily: fontFamily.interRegular, fontSize: 13, lineHeight: 19.5, color: color.textMuted },
   platformLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.14 * 10, textTransform: 'uppercase', color: color.textMuted },
   helpText: { fontFamily: fontFamily.interRegular, fontSize: 12, lineHeight: 17, color: color.textMuted },
+  warnText: { fontFamily: fontFamily.interMedium, fontSize: 12, lineHeight: 17, color: color.ember },
   bareInput: {
     height: 50,
     backgroundColor: color.base,

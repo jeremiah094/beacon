@@ -9,8 +9,12 @@ export type AdminLeagueSummary = {
   pendingTeams: number;
 };
 
-async function fetchAdminLeagues(): Promise<AdminLeagueSummary[]> {
-  const { data: leagues } = await supabase.from('leagues').select('id, name, status').order('created_at', { ascending: false });
+async function fetchAdminLeagues(titleSlug: string): Promise<AdminLeagueSummary[]> {
+  const { data: leagues } = await supabase
+    .from('leagues')
+    .select('id, name, status, titles!inner(slug)')
+    .eq('titles.slug', titleSlug)
+    .order('created_at', { ascending: false });
   if (!leagues || leagues.length === 0) return [];
 
   const { data: regs } = await supabase
@@ -33,8 +37,8 @@ async function fetchAdminLeagues(): Promise<AdminLeagueSummary[]> {
   });
 }
 
-export function useAdminLeagues() {
-  return useQuery({ queryKey: ['adminLeagues'], queryFn: fetchAdminLeagues });
+export function useAdminLeagues(titleSlug: string = 'apex') {
+  return useQuery({ queryKey: ['adminLeagues', titleSlug], queryFn: () => fetchAdminLeagues(titleSlug) });
 }
 
 export type LeagueFormData = {
@@ -64,16 +68,10 @@ export function useAdminLeague(leagueId: string | undefined) {
   });
 }
 
-export function useSaveLeague(leagueId: string | undefined, userId: string | undefined) {
+export function useSaveLeague(leagueId: string | undefined, userId: string | undefined, titleId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ form, publish }: { form: LeagueFormData; publish: boolean }) => {
-      // Apex is the only title with a create-league UI so far — the title
-      // picker lands with the next title's build. Immutable once set, so
-      // re-sending it on every update (not just create) is harmless.
-      const { data: apexTitle } = await supabase.from('titles').select('id').eq('slug', 'apex').single();
-      if (!apexTitle) throw new Error('Could not resolve the Apex Legends title — try again.');
-
       const payload = {
         name: form.name,
         season_label: form.seasonLabel || null,
@@ -82,22 +80,26 @@ export function useSaveLeague(leagueId: string | undefined, userId: string | und
         season_start: form.seasonStart || null,
         season_end: form.seasonEnd || null,
         entry_rules: form.entryRules || null,
-        title_id: apexTitle.id,
         ...(publish ? { status: 'published' } : {}),
       };
 
       const duplicateMessage = `A league named "${form.name}"${form.seasonLabel ? ` for ${form.seasonLabel}` : ''} already exists.`;
 
       if (leagueId) {
+        // title_id is immutable once set — deliberately left out of this
+        // payload. It used to be re-sent unconditionally here, which meant
+        // editing a league while the admin console happened to be in a
+        // different game's context would silently retype it.
         const { error } = await supabase.from('leagues').update(payload).eq('id', leagueId);
         if (error?.code === '23505') throw new Error(duplicateMessage);
         if (error) throw error;
         return leagueId;
       }
 
+      if (!titleId) throw new Error('Could not resolve the active game — try again.');
       const { data, error } = await supabase
         .from('leagues')
-        .insert({ ...payload, status: publish ? 'published' : 'draft', created_by: userId })
+        .insert({ ...payload, title_id: titleId, status: publish ? 'published' : 'draft', created_by: userId })
         .select('id')
         .single();
       if (error?.code === '23505') throw new Error(duplicateMessage);

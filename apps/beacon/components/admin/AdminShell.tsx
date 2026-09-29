@@ -3,10 +3,12 @@ import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } fr
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Logo } from '../Logo';
-import { color, fontFamily } from '../../theme/tokens';
+import { color, fontFamily, titleColors } from '../../theme/tokens';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/hooks/useSession';
 import { useAdminNavCounts, useAdminProfile } from '../../lib/api/admin';
+import { useActiveAdminTitle } from '../../lib/hooks/useActiveAdminTitle';
+import { titleMeta as getTitleMeta } from '../../lib/titles';
 
 export type AdminNavKey = 'leagues' | 'approvals' | 'schedule' | 'live' | 'results' | 'settings';
 
@@ -65,6 +67,9 @@ export function AdminShell({
   const { width } = useWindowDimensions();
   const isMobile = width < MOBILE_BREAKPOINT;
   const [navOpen, setNavOpen] = useState(false);
+  const { activeAdminTitleSlug } = useActiveAdminTitle();
+  const activeTitle = getTitleMeta(activeAdminTitleSlug ?? 'apex');
+  const activeAccent = titleColors(activeTitle.slug);
 
   function hrefFor(key: AdminNavKey): string {
     if (key === 'leagues') return '/(admin)/leagues';
@@ -99,6 +104,16 @@ export function AdminShell({
         </View>
         <Text style={styles.consoleLabel}>ADMIN CONSOLE</Text>
       </View>
+
+      <Pressable onPress={() => { setNavOpen(false); router.push('/(admin)/choose-game'); }} style={styles.gameSwitchWrap}>
+        {({ hovered }: any) => (
+          <View style={[styles.gameSwitchRow, hovered && { borderColor: activeAccent.accentBorder }]}>
+            <View style={[styles.gameSwitchDot, { backgroundColor: activeAccent.accent }]} />
+            <Text style={styles.gameSwitchLabel} numberOfLines={1}>{activeTitle.name}</Text>
+            <Text style={styles.gameSwitchChevron}>SWITCH</Text>
+          </View>
+        )}
+      </Pressable>
 
       <View style={styles.navList}>
         {NAV_ITEMS.map((item) => {
@@ -257,6 +272,19 @@ const styles = StyleSheet.create({
   wordmark: { fontFamily: fontFamily.rajdhaniBold, fontSize: 22, letterSpacing: 0.06 * 22, color: color.textPrimary },
   wordmarkSmall: { fontFamily: fontFamily.rajdhaniBold, fontSize: 17, letterSpacing: 0.06 * 17, color: color.textPrimary },
   consoleLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.18 * 9, color: color.textMuted },
+  gameSwitchWrap: { paddingHorizontal: 12, paddingTop: 12 },
+  gameSwitchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    borderWidth: 1,
+    borderColor: color.hairline,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  gameSwitchDot: { width: 7, height: 7, borderRadius: 3.5 },
+  gameSwitchLabel: { flex: 1, fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.textPrimary },
+  gameSwitchChevron: { fontFamily: fontFamily.interMedium, fontSize: 9, letterSpacing: 0.08 * 9, color: color.textMuted },
   navList: { padding: 12, gap: 2 },
   navRow: {
     flexDirection: 'row',

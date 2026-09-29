@@ -9,20 +9,40 @@ import { PasswordConfirmPanel } from '../../../components/PasswordConfirmPanel';
 import { Spinner } from '../../../components/Spinner';
 import { color, fontFamily } from '../../../theme/tokens';
 import { AdminLeagueSummary, useAdminLeagues, useDeleteLeague } from '../../../lib/api/adminLeagues';
+import { useActiveAdminTitle } from '../../../lib/hooks/useActiveAdminTitle';
+import { titleMeta } from '../../../lib/titles';
 
 // Not one of the 16 reference screens — necessary connective tissue: the
 // sidebar's "Leagues" nav item and every per-league admin screen need
 // somewhere to pick a league from.
 export default function AdminLeaguesList() {
-  const { data: leagues, isLoading } = useAdminLeagues();
+  const { activeAdminTitleSlug } = useActiveAdminTitle();
+  const title = titleMeta(activeAdminTitleSlug ?? 'apex');
+  const { data: leagues, isLoading } = useAdminLeagues(title.slug);
   const deleteLeague = useDeleteLeague();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  if (!title.adminToolsAvailable) {
+    return (
+      <AdminShell active="leagues" breadcrumbs={[{ label: 'Leagues' }]} title="LEAGUES" titleMeta={title.name}>
+        <View style={styles.emptyBox}>
+          <Text style={styles.emptyTitle}>{title.name} admin tools are coming soon</Text>
+          <Text style={styles.emptyBody}>
+            Scheduling, results and match-day tools for {title.name} haven't shipped yet — Apex Legends is the only
+            title with a full admin console so far.
+          </Text>
+          <AdminButton label="Switch to Apex Legends" onPress={() => router.push('/(admin)/choose-game')} style={{ marginTop: 4 }} />
+        </View>
+      </AdminShell>
+    );
+  }
 
   return (
     <AdminShell
       active="leagues"
       breadcrumbs={[{ label: 'Leagues' }]}
       title="LEAGUES"
+      titleMeta={title.name}
       actions={<AdminButton label="Create league" onPress={() => router.push('/(admin)/leagues/create')} />}
     >
       {isLoading ? (

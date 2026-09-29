@@ -13,6 +13,8 @@ import { useAdminLeague, useDeleteLeague, useSaveLeague } from '../../../lib/api
 import { useLeagueDefaults } from '../../../lib/api/adminSettings';
 import { REGIONS } from '../../../lib/leagueOptions';
 import { PasswordConfirmPanel } from '../../../components/PasswordConfirmPanel';
+import { useActiveAdminTitle } from '../../../lib/hooks/useActiveAdminTitle';
+import { useTitleId } from '../../../lib/api/titles';
 
 // Reference: Beacon 11 Create League.dc.html. Also serves as the edit
 // screen (?leagueId=X) — BUILD.md's 16 screens don't include a separate
@@ -27,7 +29,9 @@ export default function CreateOrEditLeague() {
   const { userId } = useSession();
   const { data: existing, isLoading } = useAdminLeague(leagueId);
   const { data: defaults } = useLeagueDefaults();
-  const saveLeague = useSaveLeague(leagueId, userId);
+  const { activeAdminTitleSlug } = useActiveAdminTitle();
+  const { data: activeAdminTitleId } = useTitleId(activeAdminTitleSlug ?? 'apex');
+  const saveLeague = useSaveLeague(leagueId, userId, activeAdminTitleId ?? undefined);
   const deleteLeague = useDeleteLeague();
 
   const [name, setName] = useState('');

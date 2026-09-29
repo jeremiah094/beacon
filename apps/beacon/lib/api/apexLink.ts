@@ -28,11 +28,15 @@ export type ApexLinkResult =
 
 /** Calls the apex-link-id Edge Function (BUILD.md §4). Requires an active session. */
 export async function linkApexId(player: string, platform: ApexPlatform = 'PC'): Promise<ApexLinkResult> {
-  const { data, error } = await supabase.functions.invoke<ApexLinkResult>('apex-link-id', {
-    body: { player, platform },
-  });
-  if (error || !data) {
+  try {
+    const { data, error } = await supabase.functions.invoke<ApexLinkResult>('apex-link-id', {
+      body: { player, platform },
+    });
+    if (error || !data) {
+      return { ok: false, reason: 'upstream_down', message: "Apex's stat service is temporarily unavailable. Try again shortly." };
+    }
+    return data;
+  } catch {
     return { ok: false, reason: 'upstream_down', message: "Apex's stat service is temporarily unavailable. Try again shortly." };
   }
-  return data;
 }

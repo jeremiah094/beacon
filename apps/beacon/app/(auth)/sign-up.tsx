@@ -9,6 +9,7 @@ import { Logo } from '../../components/Logo';
 import { CornerCut } from '../../components/CornerCut';
 import { color, fontFamily } from '../../theme/tokens';
 import { supabase } from '../../lib/supabase';
+import { getActiveAdminTitleSlug } from '../../lib/hooks/useActiveAdminTitle';
 
 // Reference: Beacon 01 Sign Up.dc.html. The prototype's form/verifying/
 // verified phase machine lived here when this screen only ever linked an
@@ -47,7 +48,8 @@ export default function SignUp() {
   async function routeAfterSignIn(userId: string) {
     const { data: profile } = await supabase.from('profiles').select('is_admin').eq('id', userId).maybeSingle();
     if (profile?.is_admin) {
-      router.replace('/(admin)/leagues');
+      const activeAdminTitleSlug = await getActiveAdminTitleSlug();
+      router.replace(activeAdminTitleSlug ? '/(admin)/leagues' : '/(admin)/choose-game');
       return;
     }
     router.replace('/(auth)/choose-game');

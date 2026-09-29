@@ -15,11 +15,18 @@ export type ValorantLinkResult =
 /** Calls the valorant-link-id Edge Function. Requires an active session.
  * Identity verification only — see the function's own comment for why. */
 export async function linkValorantId(riotId: string): Promise<ValorantLinkResult> {
-  const { data, error } = await supabase.functions.invoke<ValorantLinkResult>('valorant-link-id', {
-    body: { riotId },
-  });
-  if (error || !data) {
+  try {
+    const { data, error } = await supabase.functions.invoke<ValorantLinkResult>('valorant-link-id', {
+      body: { riotId },
+    });
+    if (error || !data) {
+      return { ok: false, reason: 'upstream_down', message: "Riot's account service is temporarily unavailable. Try again shortly." };
+    }
+    return data;
+  } catch {
+    // invoke() can throw outright on a real network failure rather than
+    // resolving with `error` — caught here so a caller never has to
+    // distinguish "returned false" from "threw" to show a message.
     return { ok: false, reason: 'upstream_down', message: "Riot's account service is temporarily unavailable. Try again shortly." };
   }
-  return data;
 }
