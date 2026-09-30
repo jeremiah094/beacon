@@ -9,7 +9,8 @@ import { AdminTallyRow } from '../../../../components/admin/AdminTally';
 import { CornerCut } from '../../../../components/CornerCut';
 import { Diamond } from '../../../../components/Diamond';
 import { Spinner } from '../../../../components/Spinner';
-import { color, fontFamily, tabularNums } from '../../../../theme/tokens';
+import { PasswordConfirmPanel } from '../../../../components/PasswordConfirmPanel';
+import { color, fontFamily, tabularNums, titleColors } from '../../../../theme/tokens';
 import { useAdminLeague } from '../../../../lib/api/adminLeagues';
 import { useLeagueDefaults } from '../../../../lib/api/adminSettings';
 import {
@@ -22,6 +23,15 @@ import {
   useSaveGame,
   useSetGameLobbyCode,
 } from '../../../../lib/api/adminSchedule';
+import {
+  AdminFixture,
+  useAdminFixtures,
+  useApprovedTeams,
+  useCancelFixture,
+  useDeleteAllFixtures,
+  useGenerateRoundRobin,
+  useSaveFixture,
+} from '../../../../lib/api/adminFixtures';
 
 // Reference: Beacon 13 Schedule Matches.dc.html. The source lets the admin
 // hand-pick which of 20 approved teams share a given lobby (a per-game
@@ -34,7 +44,18 @@ import {
 const TIMES = ['19:00', '20:00', '21:00', '21:30'];
 const FALLBACK_MAPS = ['Storm Point', "World's Edge", 'Broken Moon', 'Olympus'];
 
+// Dispatches on the league's own title — battle_royale keeps the original
+// Apex screen untouched below; head_to_head (Valorant pilot) gets the
+// round-robin fixtures screen further down this file.
 export default function ScheduleMatches() {
+  const { leagueId } = useLocalSearchParams<{ leagueId: string }>();
+  const { data: league } = useAdminLeague(leagueId);
+  const formatType = (league?.titles as any)?.format_type;
+  if (formatType === 'head_to_head') return <ScheduleFixtures />;
+  return <ScheduleMatchesApex />;
+}
+
+function ScheduleMatchesApex() {
   const { leagueId } = useLocalSearchParams<{ leagueId: string }>();
   const { data: league } = useAdminLeague(leagueId);
   const { data: games, isLoading } = useAdminGames(leagueId);
@@ -486,6 +507,243 @@ function formatGameWhen(iso: string): string {
   return `${datePart} ${timePart}`;
 }
 
+// Head-to-head (Valorant pilot) equivalent of ScheduleMatchesApex above —
+// "every team plays every team" round robin generated in bulk from the
+// league's games_per_opponent setting, rather than one game published at a
+// time. Per-fixture date/best-of stays editable afterward, same spirit as
+// the Apex screen's per-game editing.
+function ScheduleFixtures() {
+  const { leagueId } = useLocalSearchParams<{ leagueId: string }>();
+  const { data: league } = useAdminLeague(leagueId);
+  const { data: approvedTeams } = useApprovedTeams(leagueId);
+  const { data: fixtures, isLoading } = useAdminFixtures(leagueId);
+  const generate = useGenerateRoundRobin(leagueId);
+  const deleteAll = useDeleteAllFixtures(leagueId);
+  const saveFixture = useSaveFixture(leagueId);
+  const cancelFixture = useCancelFixture(leagueId);
+
+  const accent = titleColors((league?.titles as any)?.slug ?? 'valorant');
+  const [generateError, setGenerateError] = useState<string | null>(null);
+  const [confirmingDeleteAll, setConfirmingDeleteAll] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editTime, setEditTime] = useState('20:00');
+  const [editBestOf, setEditBestOf] = useState(3);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+
+  const active = (fixtures ?? []).filter((f) => f.status !== 'cancelled');
+  const gamesPerOpponent = league?.games_per_opponent ?? 1;
+
+  const groups: { roundNumber: number; fixtures: AdminFixture[] }[] = [];
+  for (const f of fixtures ?? []) {
+    let group = groups.find((g) => g.roundNumber === f.roundNumber);
+    if (!group) {
+      group = { roundNumber: f.roundNumber, fixtures: [] };
+      groups.push(group);
+    }
+    group.fixtures.push(f);
+  }
+
+  async function handleGenerate() {
+    setGenerateError(null);
+    try {
+      await generate.mutateAsync();
+    } catch (err) {
+      const message = (err as { message?: string } | null)?.message;
+      setGenerateError(message || 'Could not generate the round robin. Try again.');
+    }
+  }
+
+  function startEdit(f: AdminFixture) {
+    setEditingId(f.id);
+    const d = new Date(f.scheduledAt);
+    setEditDate(d.toISOString().slice(0, 10));
+    setEditTime(d.toISOString().slice(11, 16));
+    setEditBestOf(f.bestOf);
+  }
+
+  async function saveEdit(fixtureId: string) {
+    const scheduledAt = parseDateTime(editDate, editTime);
+    if (!scheduledAt) return;
+    await saveFixture.mutateAsync({ fixtureId, scheduledAt, bestOf: editBestOf });
+    setEditingId(null);
+  }
+
+  async function confirmCancel(fixtureId: string) {
+    if (cancellingId === fixtureId) {
+      await cancelFixture.mutateAsync(fixtureId);
+      setCancellingId(null);
+    } else {
+      setCancellingId(fixtureId);
+    }
+  }
+
+  return (
+    <AdminShell
+      active="schedule"
+      activeLeagueId={leagueId}
+      breadcrumbs={[
+        { label: 'Leagues', href: '/(admin)/leagues' },
+        { label: league?.name ?? 'League', href: `/(admin)/leagues/create?leagueId=${leagueId}` as any },
+        { label: 'Schedule' },
+      ]}
+      title="SCHEDULE FIXTURES"
+      actions={
+        <AdminTallyRow
+          items={[
+            { n: active.length, label: 'FIXTURES' },
+            { n: approvedTeams?.length ?? 0, label: 'TEAMS APPROVED', fg: color.verified },
+          ]}
+        />
+      }
+    >
+      {(fixtures ?? []).length === 0 ? (
+        <View style={fixtureStyles.generateBox}>
+          <Text style={fixtureStyles.generateTitle}>Generate the round robin</Text>
+          <Text style={fixtureStyles.generateBody}>
+            Every approved team plays every other team, {gamesPerOpponent === 2 ? 'twice each (home and away)' : 'once each'} — set from
+            this league's "Games against each team" option. {approvedTeams?.length ?? 0} team{(approvedTeams?.length ?? 0) === 1 ? '' : 's'}{' '}
+            approved right now.
+          </Text>
+          {(approvedTeams?.length ?? 0) < 2 && (
+            <Text style={[fixtureStyles.generateBody, { color: color.ember }]}>Approve at least 2 teams on Team approvals before generating fixtures.</Text>
+          )}
+          {generateError && (
+            <View style={fixtureStyles.noteRow}>
+              <View style={fixtureStyles.noteBar} />
+              <Text style={fixtureStyles.noteText}>{generateError}</Text>
+            </View>
+          )}
+          <AdminButton
+            label={generate.isPending ? 'Generating…' : 'Generate round robin'}
+            onPress={handleGenerate}
+            disabled={(approvedTeams?.length ?? 0) < 2 || generate.isPending}
+            style={{ alignSelf: 'flex-start', marginTop: 4 }}
+          />
+        </View>
+      ) : (
+        <View style={{ gap: 22 }}>
+          <View style={fixtureStyles.headerRow}>
+            <Text style={fixtureStyles.sectionLabel}>Fixtures by round</Text>
+            {confirmingDeleteAll ? (
+              <View style={{ width: '100%' }}>
+                <PasswordConfirmPanel
+                  label="DELETE ALL FIXTURES"
+                  warning="This permanently deletes every fixture in this league — including any published results. This can't be undone. Use it to regenerate the round robin from scratch."
+                  confirmLabel="Delete all fixtures"
+                  onCancel={() => setConfirmingDeleteAll(false)}
+                  onConfirmed={async () => {
+                    await deleteAll.mutateAsync();
+                    setConfirmingDeleteAll(false);
+                  }}
+                />
+              </View>
+            ) : (
+              <Pressable onPress={() => setConfirmingDeleteAll(true)}>
+                <Text style={fixtureStyles.deleteAllLabel}>Delete all fixtures</Text>
+              </Pressable>
+            )}
+          </View>
+
+          {isLoading ? (
+            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+              <Spinner size={20} />
+            </View>
+          ) : (
+            groups.map((group) => (
+              <View key={group.roundNumber} style={{ gap: 8 }}>
+                <Text style={[fixtureStyles.roundLabel, { color: accent.accent }]}>Round {group.roundNumber}</Text>
+                <View style={{ gap: 1, backgroundColor: color.hairline, borderWidth: 1, borderColor: color.hairline }}>
+                  {group.fixtures.map((f) => {
+                    const cancelled = f.status === 'cancelled';
+                    const completed = f.status === 'completed';
+                    const editing = editingId === f.id;
+                    return (
+                      <View key={f.id} style={[fixtureStyles.row, { backgroundColor: color.panel }]}>
+                        <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
+                          <Text style={[fixtureStyles.rowTitle, cancelled && { color: color.textMuted, textDecorationLine: 'line-through' }]}>
+                            {f.homeTeamName} vs {f.awayTeamName}
+                          </Text>
+                          <Text style={fixtureStyles.rowSub}>
+                            Bo{f.bestOf} · {formatGameWhen(f.scheduledAt)}
+                            {completed ? ` · ${f.homeScore}–${f.awayScore}` : ''}
+                          </Text>
+                        </View>
+
+                        {editing ? (
+                          <View style={fixtureStyles.editRow}>
+                            <AdminDateField value={editDate} onChange={setEditDate} style={{ width: 140 }} />
+                            <View style={{ flexDirection: 'row', gap: 6 }}>
+                              {TIMES.map((t) => (
+                                <Pressable key={t} onPress={() => setEditTime(t)}>
+                                  <View style={[fixtureStyles.timeChip, editTime === t && { backgroundColor: color.textPrimary, borderColor: color.textPrimary }]}>
+                                    <Text style={[fixtureStyles.timeChipLabel, editTime === t && { color: color.base }]}>{t}</Text>
+                                  </View>
+                                </Pressable>
+                              ))}
+                            </View>
+                            <View style={{ flexDirection: 'row', gap: 6 }}>
+                              {[1, 3, 5].map((n) => (
+                                <Pressable key={n} onPress={() => setEditBestOf(n)}>
+                                  <View style={[fixtureStyles.timeChip, editBestOf === n && { backgroundColor: color.textPrimary, borderColor: color.textPrimary }]}>
+                                    <Text style={[fixtureStyles.timeChipLabel, editBestOf === n && { color: color.base }]}>Bo{n}</Text>
+                                  </View>
+                                </Pressable>
+                              ))}
+                            </View>
+                            <Pressable onPress={() => saveFixture.isPending ? null : saveEdit(f.id)}>
+                              <Text style={fixtureStyles.saveLabel}>Save</Text>
+                            </Pressable>
+                            <Pressable onPress={() => setEditingId(null)}>
+                              <Text style={fixtureStyles.cancelEditLabel}>✕</Text>
+                            </Pressable>
+                          </View>
+                        ) : (
+                          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <AdminChip
+                              label={cancelled ? 'CANCELLED' : completed ? 'COMPLETED' : 'SCHEDULED'}
+                              tone={cancelled ? 'neutral' : completed ? 'verified' : 'neutral'}
+                              dotShape={completed ? 'diamond' : 'circle'}
+                            />
+                            {completed && (
+                              <Pressable onPress={() => router.push(`/(admin)/fixtures/${f.id}/verify` as any)}>
+                                <AdminChip label="RESULTS" tone="verified" dotShape="diamond" />
+                              </Pressable>
+                            )}
+                            {!cancelled && !completed && (
+                              <>
+                                <Pressable onPress={() => router.push(`/(admin)/fixtures/${f.id}/verify` as any)}>
+                                  <View style={fixtureStyles.editBtn}>
+                                    <Text style={fixtureStyles.editBtnLabel}>Enter scores</Text>
+                                  </View>
+                                </Pressable>
+                                <Pressable onPress={() => startEdit(f)}>
+                                  <View style={fixtureStyles.editBtn}>
+                                    <Text style={fixtureStyles.editBtnLabel}>Edit</Text>
+                                  </View>
+                                </Pressable>
+                                <Pressable onPress={() => confirmCancel(f.id)}>
+                                  <View style={[fixtureStyles.cancelBtn, cancellingId === f.id && { backgroundColor: color.emberTint }]}>
+                                    <Text style={fixtureStyles.cancelBtnLabel}>{cancellingId === f.id ? 'Confirm cancel' : 'Cancel'}</Text>
+                                  </View>
+                                </Pressable>
+                              </>
+                            )}
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            ))
+          )}
+        </View>
+      )}
+    </AdminShell>
+  );
+}
+
 const styles = StyleSheet.create({
   formRow: { flexDirection: 'row', gap: 16, alignItems: 'flex-end' },
   formRowMobile: { flexDirection: 'column', alignItems: 'stretch' },
@@ -553,4 +811,29 @@ const styles = StyleSheet.create({
   noteText: { flex: 1, fontFamily: fontFamily.interRegular, fontSize: 12, lineHeight: 17, color: color.textMuted },
   publishedNote: { flex: 1, fontFamily: fontFamily.interMedium, fontSize: 12, lineHeight: 17, color: color.verified },
   resetLabel: { fontFamily: fontFamily.interMedium, fontSize: 11, color: color.textMuted, textAlign: 'center' },
+});
+
+const fixtureStyles = StyleSheet.create({
+  generateBox: { borderWidth: 1, borderColor: color.hairline, backgroundColor: color.panel, padding: 28, gap: 12, alignItems: 'flex-start' },
+  generateTitle: { fontFamily: fontFamily.rajdhaniBold, fontSize: 24, color: color.textPrimary },
+  generateBody: { fontFamily: fontFamily.interRegular, fontSize: 13, lineHeight: 19.5, color: color.textMuted, maxWidth: 560 },
+  headerRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
+  sectionLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.16 * 10, textTransform: 'uppercase', color: color.textMuted },
+  deleteAllLabel: { fontFamily: fontFamily.interMedium, fontSize: 11, color: color.ember },
+  roundLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, letterSpacing: 0.08 * 12, textTransform: 'uppercase' },
+  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 14, padding: 16, paddingHorizontal: 18 },
+  rowTitle: { fontFamily: fontFamily.rajdhaniSemiBold, fontSize: 17, letterSpacing: 0.01 * 17, color: color.textPrimary },
+  rowSub: { fontFamily: fontFamily.interRegular, fontSize: 11, color: color.textMuted, ...tabularNums },
+  editRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, alignItems: 'center' },
+  timeChip: { height: 34, paddingHorizontal: 10, borderWidth: 1, borderColor: color.hairlineInput, alignItems: 'center', justifyContent: 'center' },
+  timeChipLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: color.textMuted, ...tabularNums },
+  saveLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.textPrimary },
+  cancelEditLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.textMuted },
+  editBtn: { paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1, borderColor: color.hairlineStrong },
+  editBtnLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: color.textPrimary },
+  cancelBtn: { paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1, borderColor: color.emberBorderStrong },
+  cancelBtnLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: color.ember },
+  noteRow: { flexDirection: 'row', gap: 9, alignItems: 'flex-start' },
+  noteBar: { width: 3, alignSelf: 'stretch', backgroundColor: 'rgba(242,241,236,0.35)' },
+  noteText: { flex: 1, fontFamily: fontFamily.interRegular, fontSize: 12, lineHeight: 17, color: color.textMuted },
 });

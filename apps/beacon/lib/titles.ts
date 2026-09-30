@@ -28,7 +28,7 @@ export const TITLES: TitleMeta[] = [
     tagline: '5v5 tactical shooter',
     formatType: 'head_to_head',
     verificationAvailable: true,
-    adminToolsAvailable: false,
+    adminToolsAvailable: true,
     disclaimer: 'This competition is not affiliated with or sponsored by Riot Games, Inc. or VALORANT Esports.',
   },
   { slug: 'cs2', name: 'CS2', tagline: '5v5 tactical shooter', formatType: 'head_to_head', verificationAvailable: false, adminToolsAvailable: false },

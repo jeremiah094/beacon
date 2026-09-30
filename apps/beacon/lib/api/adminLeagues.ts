@@ -49,12 +49,17 @@ export type LeagueFormData = {
   seasonStart: string; // ISO date
   seasonEnd: string; // ISO date
   entryRules: string;
+  /** Head-to-head only — how many times each pair of teams plays each
+   * other. Omitted (not sent) for battle_royale leagues. */
+  gamesPerOpponent?: 1 | 2;
 };
 
 async function fetchLeague(leagueId: string) {
   const { data } = await supabase
     .from('leagues')
-    .select('id, name, season_label, region, teams_per_lobby, season_start, season_end, entry_rules, status')
+    .select(
+      'id, name, season_label, region, teams_per_lobby, season_start, season_end, entry_rules, status, games_per_opponent, titles(slug, name, format_type)',
+    )
     .eq('id', leagueId)
     .single();
   return data;
@@ -80,10 +85,18 @@ export function useSaveLeague(leagueId: string | undefined, userId: string | und
         season_start: form.seasonStart || null,
         season_end: form.seasonEnd || null,
         entry_rules: form.entryRules || null,
+        // Omitted entirely (not sent as null) for a battle_royale league,
+        // so a form that never collected it can't accidentally clear it.
+        ...(form.gamesPerOpponent !== undefined ? { games_per_opponent: form.gamesPerOpponent } : {}),
         ...(publish ? { status: 'published' } : {}),
       };
 
       const duplicateMessage = `A league named "${form.name}"${form.seasonLabel ? ` for ${form.seasonLabel}` : ''} already exists.`;
+      // leagues_lock_games_per_opponent (DB trigger) raises a plain
+      // exception — e.g. "Vipers played against Shannon Aces twice
+      // already — the number of games per team can't be changed once a
+      // pairing has completed both matches." — which surfaces as-is via
+      // error.message below, same as the duplicate-name case.
 
       if (leagueId) {
         // title_id is immutable once set — deliberately left out of this

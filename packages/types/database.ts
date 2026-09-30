@@ -362,6 +362,7 @@ export type Database = {
           created_at: string
           created_by: string | null
           entry_rules: string | null
+          games_per_opponent: number | null
           id: string
           name: string
           region: string
@@ -376,6 +377,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           entry_rules?: string | null
+          games_per_opponent?: number | null
           id?: string
           name: string
           region?: string
@@ -390,6 +392,7 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           entry_rules?: string | null
+          games_per_opponent?: number | null
           id?: string
           name?: string
           region?: string

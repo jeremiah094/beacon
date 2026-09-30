@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams, Redirect } from 'expo-router';
 import { AdminShell } from '../../../../components/admin/AdminShell';
 import { AdminChip } from '../../../../components/admin/AdminChip';
 import { AdminTallyRow } from '../../../../components/admin/AdminTally';
@@ -15,9 +15,21 @@ import { ResultsListGame, useDeleteGame, useDeleteMatch, useResultsList } from '
 // mixes every game status together). This lists every completed game in
 // the league with its verification state, tapping through to the
 // full per-team breakdown (screen 15).
+//
+// Head-to-head (Valorant pilot) leagues don't get a separate results list
+// — Schedule's fixture table already shows every fixture's status with an
+// "Enter scores"/"Results" link per row, so a second near-duplicate list
+// would just be two places to keep in sync. Redirect there instead.
 export default function AdminResultsList() {
   const { leagueId } = useLocalSearchParams<{ leagueId: string }>();
   const { data: league } = useAdminLeague(leagueId);
+  const formatType = (league?.titles as any)?.format_type;
+  if (formatType === 'head_to_head') return <Redirect href={`/(admin)/leagues/${leagueId}/schedule` as any} />;
+
+  return <AdminResultsListApex leagueId={leagueId} league={league} />;
+}
+
+function AdminResultsListApex({ leagueId, league }: { leagueId: string; league: any }) {
   const { data: games, isLoading } = useResultsList(leagueId);
   const deleteGame = useDeleteGame(leagueId);
   const deleteMatch = useDeleteMatch(leagueId);

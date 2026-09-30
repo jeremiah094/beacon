@@ -15,6 +15,7 @@ import { REGIONS } from '../../../lib/leagueOptions';
 import { PasswordConfirmPanel } from '../../../components/PasswordConfirmPanel';
 import { useActiveAdminTitle } from '../../../lib/hooks/useActiveAdminTitle';
 import { useTitleId } from '../../../lib/api/titles';
+import { titleMeta } from '../../../lib/titles';
 
 // Reference: Beacon 11 Create League.dc.html. Also serves as the edit
 // screen (?leagueId=X) — BUILD.md's 16 screens don't include a separate
@@ -34,10 +35,19 @@ export default function CreateOrEditLeague() {
   const saveLeague = useSaveLeague(leagueId, userId, activeAdminTitleId ?? undefined);
   const deleteLeague = useDeleteLeague();
 
+  // Editing an existing league reads its own title (immutable once set) so
+  // the format section is right even if the console's active game has
+  // since been switched elsewhere; creating a new one has no title of its
+  // own yet, so it takes the console's current game.
+  const existingTitle = existing?.titles as { slug?: string; format_type?: string } | null | undefined;
+  const title = titleMeta(existingTitle?.slug ?? activeAdminTitleSlug ?? 'apex');
+  const isHeadToHead = title.formatType === 'head_to_head';
+
   const [name, setName] = useState('');
   const [seasonLabel, setSeasonLabel] = useState('Season 3');
   const [region, setRegion] = useState(REGIONS[0]);
   const [teams, setTeams] = useState(20);
+  const [gamesPerOpponent, setGamesPerOpponent] = useState<1 | 2>(1);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [entryRules, setEntryRules] = useState('');
@@ -51,6 +61,7 @@ export default function CreateOrEditLeague() {
       setSeasonLabel(existing.season_label ?? '');
       setRegion(existing.region);
       setTeams(existing.teams_per_lobby);
+      setGamesPerOpponent((existing.games_per_opponent as 1 | 2 | null) ?? 1);
       setStartDate(existing.season_start ?? '');
       setEndDate(existing.season_end ?? '');
       setEntryRules(existing.entry_rules ?? '');
@@ -99,7 +110,16 @@ export default function CreateOrEditLeague() {
     setSaveError(null);
     try {
       const id = await saveLeague.mutateAsync({
-        form: { name, seasonLabel, region, teamsPerLobby: teams, seasonStart: parseDate(startDate), seasonEnd: parseDate(endDate), entryRules },
+        form: {
+          name,
+          seasonLabel,
+          region,
+          teamsPerLobby: teams,
+          seasonStart: parseDate(startDate),
+          seasonEnd: parseDate(endDate),
+          entryRules,
+          ...(isHeadToHead ? { gamesPerOpponent } : {}),
+        },
         publish,
       });
       if (!leagueId) router.replace({ pathname: '/(admin)/leagues/create', params: { leagueId: id } } as any);
@@ -140,11 +160,12 @@ export default function CreateOrEditLeague() {
               <View style={styles.previewSummary}>
                 {[
                   ['Region', region],
-                  ['Format', 'Battle royale · trios'],
-                  ['Teams per lobby', String(teams)],
+                  ['Format', isHeadToHead ? `Head-to-head · ${title.name}` : 'Battle royale · trios'],
+                  [isHeadToHead ? 'Teams in league' : 'Teams per lobby', String(teams)],
+                  ...(isHeadToHead ? [['Games per opponent', String(gamesPerOpponent)]] : []),
                   ['Season', seasonLabel || '—'],
                   ['Dates', startDate && endDate ? `${startDate} – ${endDate}` : 'Not set'],
-                  ['Scoring', 'ALGS placement + kills'],
+                  ['Scoring', isHeadToHead ? '3 pts per series win' : 'ALGS placement + kills'],
                 ].map(([k, v]) => (
                   <View key={k} style={styles.summaryRow}>
                     <Text style={styles.summaryK}>{k}</Text>
@@ -222,33 +243,70 @@ export default function CreateOrEditLeague() {
         <Text style={styles.helper}>Ireland-wide by default. Narrowing the region limits which teams can register.</Text>
       </Field>
 
-      <Field label="Format">
-        <View style={styles.formatBox}>
-          <View style={{ gap: 6, flex: 1 }}>
-            <Text style={styles.formatTitle}>Battle royale · trios</Text>
-            <Text style={styles.formatDesc}>Fixed. Apex league play is trios sharing one lobby — there is no head-to-head fixture.</Text>
-          </View>
-          <View style={styles.formatDivider} />
-          <View style={{ gap: 11, flex: 1.2 }}>
-            <View style={styles.stepperRow}>
-              <Text style={styles.stepperLabel}>TEAMS PER LOBBY</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <Stepper disabled={teams <= 8} onPress={() => setTeams((t) => Math.max(8, t - 1))} label="−" />
-                <Text style={[styles.stepperValue, tabularNums]}>{teams}</Text>
-                <Stepper disabled={teams >= 20} onPress={() => setTeams((t) => Math.min(20, t + 1))} label="+" />
+      {isHeadToHead ? (
+        <Field label="Format">
+          <View style={styles.formatBox}>
+            <View style={{ gap: 6, flex: 1 }}>
+              <Text style={styles.formatTitle}>Head-to-head · round robin</Text>
+              <Text style={styles.formatDesc}>Every team plays every other team. Choose how many times below — Schedule generates the fixtures from this once teams are approved.</Text>
+            </View>
+            <View style={styles.formatDivider} />
+            <View style={{ gap: 11, flex: 1.2 }}>
+              <View style={styles.stepperRow}>
+                <Text style={styles.stepperLabel}>TEAMS IN LEAGUE</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Stepper disabled={teams <= 2} onPress={() => setTeams((t) => Math.max(2, t - 1))} label="−" />
+                  <Text style={[styles.stepperValue, tabularNums]}>{teams}</Text>
+                  <Stepper disabled={teams >= 20} onPress={() => setTeams((t) => Math.min(20, t + 1))} label="+" />
+                </View>
               </View>
+
+              <View style={{ gap: 9, marginTop: 4 }}>
+                <Text style={styles.stepperLabel}>GAMES AGAINST EACH TEAM</Text>
+                <View style={styles.chipRow}>
+                  {([1, 2] as const).map((n) => (
+                    <ChipOption key={n} label={n === 1 ? '1 game' : '2 games'} active={gamesPerOpponent === n} onPress={() => setGamesPerOpponent(n)} />
+                  ))}
+                </View>
+              </View>
+              <Text style={styles.helper}>
+                {gamesPerOpponent === 2
+                  ? 'Every pairing plays twice — the round robin runs home and away.'
+                  : 'Every pairing plays once.'}{' '}
+                Locks once a pair of teams has completed both matches under whichever setting was active then — changing it after that shows exactly which teams triggered the lock.
+              </Text>
             </View>
-            <View style={{ flexDirection: 'row', gap: 3 }}>
-              {Array.from({ length: 13 }).map((_, i) => (
-                <View key={i} style={{ flex: 1, height: 4, backgroundColor: i < teams - 7 ? color.textPrimary : 'rgba(242,241,236,0.16)' }} />
-              ))}
-            </View>
-            <Text style={styles.helper}>
-              {teams >= 20 ? '20 is the maximum a single Apex custom lobby holds.' : `${teams} of a possible 20 slots. Unfilled slots are simply empty on match night.`}
-            </Text>
           </View>
-        </View>
-      </Field>
+        </Field>
+      ) : (
+        <Field label="Format">
+          <View style={styles.formatBox}>
+            <View style={{ gap: 6, flex: 1 }}>
+              <Text style={styles.formatTitle}>Battle royale · trios</Text>
+              <Text style={styles.formatDesc}>Fixed. Apex league play is trios sharing one lobby — there is no head-to-head fixture.</Text>
+            </View>
+            <View style={styles.formatDivider} />
+            <View style={{ gap: 11, flex: 1.2 }}>
+              <View style={styles.stepperRow}>
+                <Text style={styles.stepperLabel}>TEAMS PER LOBBY</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <Stepper disabled={teams <= 8} onPress={() => setTeams((t) => Math.max(8, t - 1))} label="−" />
+                  <Text style={[styles.stepperValue, tabularNums]}>{teams}</Text>
+                  <Stepper disabled={teams >= 20} onPress={() => setTeams((t) => Math.min(20, t + 1))} label="+" />
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 3 }}>
+                {Array.from({ length: 13 }).map((_, i) => (
+                  <View key={i} style={{ flex: 1, height: 4, backgroundColor: i < teams - 7 ? color.textPrimary : 'rgba(242,241,236,0.16)' }} />
+                ))}
+              </View>
+              <Text style={styles.helper}>
+                {teams >= 20 ? '20 is the maximum a single Apex custom lobby holds.' : `${teams} of a possible 20 slots. Unfilled slots are simply empty on match night.`}
+              </Text>
+            </View>
+          </View>
+        </Field>
+      )}
 
       <Field label="Season dates">
         <View style={styles.dateRow}>
@@ -269,35 +327,60 @@ export default function CreateOrEditLeague() {
         </View>
       </Field>
 
-      <Field label="Scoring model">
-        <CornerCut cut={16} fill={color.panel} strokeColor="rgba(62,213,152,0.4)">
-          <View style={styles.scoringContent}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+      {isHeadToHead ? (
+        <Field label="Scoring model">
+          <CornerCut cut={16} fill={color.panel} strokeColor="rgba(62,213,152,0.4)">
+            <View style={styles.scoringContent}>
               <View style={{ gap: 5 }}>
-                <Text style={styles.scoringTitle}>ALGS placement + kills</Text>
-                <Text style={styles.scoringDesc}>Standard competitive Apex scoring. Matches what teams already know from pro play.</Text>
+                <Text style={styles.scoringTitle}>Series wins</Text>
+                <Text style={styles.scoringDesc}>Standings rank teams by series wins, then map difference — no placement or kill scoring, since there's no shared lobby.</Text>
+              </View>
+              <View style={styles.scoringRules}>
+                {[
+                  ['Series win', '3 pts'],
+                  ['Series loss', '0 pts'],
+                ].map(([k, v]) => (
+                  <View key={k} style={styles.summaryRow}>
+                    <Text style={styles.summaryK}>{k}</Text>
+                    <Text style={styles.summaryV}>{v}</Text>
+                  </View>
+                ))}
               </View>
             </View>
-            <View style={styles.scoringRules}>
-              {[
-                ['1st place', '12 pts'],
-                ['2nd / 3rd', '9 / 7 pts'],
-                ['4th–5th · 6th–7th', '5 / 4 pts'],
-                ['8th–10th · 11th–15th', '2 / 1 pts'],
-                ['Per kill', '1 pt'],
-              ].map(([k, v]) => (
-                <View key={k} style={styles.summaryRow}>
-                  <Text style={styles.summaryK}>{k}</Text>
-                  <Text style={styles.summaryV}>{v}</Text>
+          </CornerCut>
+          <Text style={styles.helper}>Map scores are entered per fixture from the Results screen once each series finishes. The scoring model is fixed for every league.</Text>
+        </Field>
+      ) : (
+        <Field label="Scoring model">
+          <CornerCut cut={16} fill={color.panel} strokeColor="rgba(62,213,152,0.4)">
+            <View style={styles.scoringContent}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
+                <View style={{ gap: 5 }}>
+                  <Text style={styles.scoringTitle}>ALGS placement + kills</Text>
+                  <Text style={styles.scoringDesc}>Standard competitive Apex scoring. Matches what teams already know from pro play.</Text>
                 </View>
-              ))}
+              </View>
+              <View style={styles.scoringRules}>
+                {[
+                  ['1st place', '12 pts'],
+                  ['2nd / 3rd', '9 / 7 pts'],
+                  ['4th–5th · 6th–7th', '5 / 4 pts'],
+                  ['8th–10th · 11th–15th', '2 / 1 pts'],
+                  ['Per kill', '1 pt'],
+                ].map(([k, v]) => (
+                  <View key={k} style={styles.summaryRow}>
+                    <Text style={styles.summaryK}>{k}</Text>
+                    <Text style={styles.summaryV}>{v}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
-          </View>
-        </CornerCut>
-        <Text style={styles.helper}>
-          Kill and placement data is read from EA after each lobby closes. The scoring model is fixed for every league.
-        </Text>
-      </Field>
+          </CornerCut>
+          <Text style={styles.helper}>
+            Kill and placement data is read from EA after each lobby closes. The scoring model is fixed for every league.
+          </Text>
+        </Field>
+      )}
     </AdminShell>
   );
 }
