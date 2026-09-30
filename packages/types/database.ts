@@ -261,6 +261,7 @@ export type Database = {
           lineup_locked_at: string | null
           lobby_code: string | null
           map: string | null
+          observer_id: string | null
           round_number: number
           scheduled_at: string
           status: string
@@ -272,6 +273,7 @@ export type Database = {
           lineup_locked_at?: string | null
           lobby_code?: string | null
           map?: string | null
+          observer_id?: string | null
           round_number?: number
           scheduled_at: string
           status?: string
@@ -283,6 +285,7 @@ export type Database = {
           lineup_locked_at?: string | null
           lobby_code?: string | null
           map?: string | null
+          observer_id?: string | null
           round_number?: number
           scheduled_at?: string
           status?: string
@@ -293,6 +296,13 @@ export type Database = {
             columns: ["league_id"]
             isOneToOne: false
             referencedRelation: "leagues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "games_observer_id_fkey"
+            columns: ["observer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]

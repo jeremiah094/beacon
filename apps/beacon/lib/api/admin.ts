@@ -47,3 +47,19 @@ export function useAdminProfile(userId: string | undefined) {
     enabled: !!userId,
   });
 }
+
+export type AdminProfile = { id: string; name: string };
+
+async function fetchAdminProfiles(): Promise<AdminProfile[]> {
+  const { data } = await supabase.from('profiles').select('id, display_name, gamertag').eq('is_admin', true).order('display_name');
+  return (data ?? []).map((p) => ({ id: p.id, name: p.display_name ?? p.gamertag ?? 'Admin' }));
+}
+
+/** Pool of accounts assignable as a game/fixture's observer — every admin,
+ * since observer_id is DB-enforced to be one (see enforce_observer_is_admin).
+ * No separate lighter-weight "staff" role exists yet; this reuses the
+ * org's existing admin accounts. Shared by both Apex's Schedule screen and
+ * Valorant's fixtures Schedule screen. */
+export function useAdminProfiles() {
+  return useQuery({ queryKey: ['adminProfiles'], queryFn: fetchAdminProfiles });
+}

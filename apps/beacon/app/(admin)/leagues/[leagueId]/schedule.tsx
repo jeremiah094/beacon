@@ -22,12 +22,12 @@ import {
   useOpenLobby,
   useSaveGame,
   useSetGameLobbyCode,
+  useSetGameObserver,
 } from '../../../../lib/api/adminSchedule';
 import { AdminSelectField } from '../../../../components/admin/AdminSelectField';
 import {
   AdminFixture,
   useAdminFixtures,
-  useAdminProfiles,
   useApprovedTeams,
   useCancelFixture,
   useDeleteAllFixtures,
@@ -36,6 +36,7 @@ import {
   useSetFixtureLobbyCode,
   useSetFixtureObserver,
 } from '../../../../lib/api/adminFixtures';
+import { useAdminProfiles } from '../../../../lib/api/admin';
 
 // Reference: Beacon 13 Schedule Matches.dc.html. The source lets the admin
 // hand-pick which of 20 approved teams share a given lobby (a per-game
@@ -68,7 +69,9 @@ function ScheduleMatchesApex() {
   const saveGame = useSaveGame(leagueId);
   const cancelGame = useCancelGame(leagueId);
   const setLobbyCode = useSetGameLobbyCode(leagueId);
+  const setObserver = useSetGameObserver(leagueId);
   const openLobby = useOpenLobby(leagueId);
+  const { data: adminProfiles } = useAdminProfiles();
   const { width } = useWindowDimensions();
   const isMobile = width < 860;
 
@@ -90,6 +93,7 @@ function ScheduleMatchesApex() {
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const active = (games ?? []).filter((g) => g.status !== 'cancelled');
+  const unobservedCount = active.filter((g) => g.status !== 'completed' && !g.observerId).length;
   const seasonStart = league?.season_start ?? null;
   const seasonEnd = league?.season_end ?? null;
 
@@ -206,6 +210,7 @@ function ScheduleMatchesApex() {
           items={[
             { n: active.length, label: 'SCHEDULED' },
             { n: approvedTeams ?? 0, label: 'TEAMS ELIGIBLE', fg: color.verified },
+            { n: unobservedCount, label: 'NEED AN OBSERVER', fg: unobservedCount ? color.ember : color.verified },
           ]}
         />
       }
@@ -379,10 +384,11 @@ function ScheduleMatchesApex() {
           </View>
         ) : (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }}>
-          <View style={[styles.table, { minWidth: 940 }]}>
+          <View style={[styles.table, { minWidth: 1100 }]}>
             <View style={styles.tableHeaderRow}>
               <Text style={[styles.tableHeaderCell, { width: 150 }]}>GAME</Text>
               <Text style={[styles.tableHeaderCell, { width: 150 }]}>LOBBY CODE</Text>
+              <Text style={[styles.tableHeaderCell, { width: 160 }]}>OBSERVER</Text>
               <Text style={[styles.tableHeaderCell, { width: 130 }]}>WHEN</Text>
               <Text style={[styles.tableHeaderCell, { flex: 1 }]}>MAP</Text>
               <Text style={[styles.tableHeaderCell, { width: 296, textAlign: 'right' }]}>ACTIONS</Text>
@@ -445,6 +451,19 @@ function ScheduleMatchesApex() {
                           </View>
                         )}
                       </Pressable>
+                    )}
+                  </View>
+                  <View style={{ width: 160 }}>
+                    {cancelled || completed ? (
+                      <Text style={[styles.rowCode, { color: g.observerId ? fg : color.textMuted }]}>{g.observerName ?? 'None'}</Text>
+                    ) : (
+                      <AdminSelectField
+                        value={g.observerId ?? ''}
+                        options={(adminProfiles ?? []).map((p) => ({ value: p.id, label: p.name }))}
+                        placeholder="Assign observer…"
+                        onChange={(value) => setObserver.mutateAsync({ gameId: g.id, observerId: value || null })}
+                        style={{ width: 150, height: 30 }}
+                      />
                     )}
                   </View>
                   <Text style={[styles.rowWhen, { color: fg }, tabularNums]}>{formatGameWhen(g.scheduledAt)}</Text>

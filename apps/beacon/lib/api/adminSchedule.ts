@@ -9,12 +9,16 @@ export type AdminGame = {
   map: string | null;
   status: string;
   lobbyCode: string | null;
+  observerId: string | null;
+  observerName: string | null;
 };
 
 async function fetchAdminGames(leagueId: string): Promise<AdminGame[]> {
   const { data, error } = await supabase
     .from('games')
-    .select('id, round_number, game_number, scheduled_at, map, status, lobby_code')
+    .select(
+      'id, round_number, game_number, scheduled_at, map, status, lobby_code, observer_id, observer:profiles!games_observer_id_fkey(display_name, gamertag)',
+    )
     .eq('league_id', leagueId)
     .in('status', ['scheduled', 'lobby_open', 'in_progress', 'cancelled'])
     .order('scheduled_at', { ascending: true });
@@ -27,6 +31,8 @@ async function fetchAdminGames(leagueId: string): Promise<AdminGame[]> {
     map: g.map,
     status: g.status,
     lobbyCode: g.lobby_code,
+    observerId: g.observer_id,
+    observerName: g.observer?.display_name ?? g.observer?.gamertag ?? null,
   }));
 }
 
@@ -111,6 +117,22 @@ export function useSetGameLobbyCode(leagueId: string | undefined) {
   return useMutation({
     mutationFn: async ({ gameId, lobbyCode }: { gameId: string; lobbyCode: string | null }) => {
       const { error } = await supabase.from('games').update({ lobby_code: lobbyCode }).eq('id', gameId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminGames', leagueId] });
+    },
+  });
+}
+
+/** Assigns (or clears, with `observerId: null`) the admin responsible for
+ * joining the lobby and watching the match live. Enforced server-side to
+ * always be an admin account (see `enforce_observer_is_admin` trigger). */
+export function useSetGameObserver(leagueId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ gameId, observerId }: { gameId: string; observerId: string | null }) => {
+      const { error } = await supabase.from('games').update({ observer_id: observerId }).eq('id', gameId);
       if (error) throw error;
     },
     onSuccess: () => {

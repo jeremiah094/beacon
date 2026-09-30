@@ -79,21 +79,6 @@ export function useAdminFixtures(leagueId: string | undefined) {
   });
 }
 
-export type AdminProfile = { id: string; name: string };
-
-async function fetchAdminProfiles(): Promise<AdminProfile[]> {
-  const { data } = await supabase.from('profiles').select('id, display_name, gamertag').eq('is_admin', true).order('display_name');
-  return (data ?? []).map((p) => ({ id: p.id, name: p.display_name ?? p.gamertag ?? 'Admin' }));
-}
-
-/** Pool of accounts that can be assigned as a fixture's observer — every
- * admin, since observer_id is DB-enforced to be one (see
- * fixtures_observer_is_admin). No separate lighter-weight "staff" role
- * exists yet; this reuses the org's existing admin accounts. */
-export function useAdminProfiles() {
-  return useQuery({ queryKey: ['adminProfiles'], queryFn: fetchAdminProfiles });
-}
-
 export function useSetFixtureObserver(leagueId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
