@@ -37,13 +37,16 @@ export type AdminFixture = {
   homeScore: number | null;
   awayScore: number | null;
   winnerTeamId: string | null;
+  lobbyCode: string | null;
+  observerId: string | null;
+  observerName: string | null;
 };
 
 async function fetchAdminFixtures(leagueId: string): Promise<AdminFixture[]> {
   const { data } = await supabase
     .from('fixtures')
     .select(
-      'id, round_number, scheduled_at, best_of, status, home_score, away_score, winner_team_id, home_team:teams!fixtures_home_team_id_fkey(id, name), away_team:teams!fixtures_away_team_id_fkey(id, name)',
+      'id, round_number, scheduled_at, best_of, status, home_score, away_score, winner_team_id, lobby_code, observer_id, home_team:teams!fixtures_home_team_id_fkey(id, name), away_team:teams!fixtures_away_team_id_fkey(id, name), observer:profiles!fixtures_observer_id_fkey(display_name, gamertag)',
     )
     .eq('league_id', leagueId)
     .order('round_number', { ascending: true })
@@ -62,6 +65,9 @@ async function fetchAdminFixtures(leagueId: string): Promise<AdminFixture[]> {
     homeScore: f.home_score,
     awayScore: f.away_score,
     winnerTeamId: f.winner_team_id,
+    lobbyCode: f.lobby_code,
+    observerId: f.observer_id,
+    observerName: f.observer_id ? ((f.observer as any)?.display_name ?? (f.observer as any)?.gamertag ?? 'Admin') : null,
   }));
 }
 
@@ -70,6 +76,47 @@ export function useAdminFixtures(leagueId: string | undefined) {
     queryKey: ['adminFixtures', leagueId],
     queryFn: () => fetchAdminFixtures(leagueId as string),
     enabled: !!leagueId,
+  });
+}
+
+export type AdminProfile = { id: string; name: string };
+
+async function fetchAdminProfiles(): Promise<AdminProfile[]> {
+  const { data } = await supabase.from('profiles').select('id, display_name, gamertag').eq('is_admin', true).order('display_name');
+  return (data ?? []).map((p) => ({ id: p.id, name: p.display_name ?? p.gamertag ?? 'Admin' }));
+}
+
+/** Pool of accounts that can be assigned as a fixture's observer — every
+ * admin, since observer_id is DB-enforced to be one (see
+ * fixtures_observer_is_admin). No separate lighter-weight "staff" role
+ * exists yet; this reuses the org's existing admin accounts. */
+export function useAdminProfiles() {
+  return useQuery({ queryKey: ['adminProfiles'], queryFn: fetchAdminProfiles });
+}
+
+export function useSetFixtureObserver(leagueId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ fixtureId, observerId }: { fixtureId: string; observerId: string | null }) => {
+      const { error } = await supabase.from('fixtures').update({ observer_id: observerId }).eq('id', fixtureId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminFixtures', leagueId] });
+    },
+  });
+}
+
+export function useSetFixtureLobbyCode(leagueId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ fixtureId, lobbyCode }: { fixtureId: string; lobbyCode: string | null }) => {
+      const { error } = await supabase.from('fixtures').update({ lobby_code: lobbyCode }).eq('id', fixtureId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminFixtures', leagueId] });
+    },
   });
 }
 

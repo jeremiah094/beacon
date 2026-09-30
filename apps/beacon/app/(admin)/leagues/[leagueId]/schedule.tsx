@@ -23,14 +23,18 @@ import {
   useSaveGame,
   useSetGameLobbyCode,
 } from '../../../../lib/api/adminSchedule';
+import { AdminSelectField } from '../../../../components/admin/AdminSelectField';
 import {
   AdminFixture,
   useAdminFixtures,
+  useAdminProfiles,
   useApprovedTeams,
   useCancelFixture,
   useDeleteAllFixtures,
   useGenerateRoundRobin,
   useSaveFixture,
+  useSetFixtureLobbyCode,
+  useSetFixtureObserver,
 } from '../../../../lib/api/adminFixtures';
 
 // Reference: Beacon 13 Schedule Matches.dc.html. The source lets the admin
@@ -517,10 +521,13 @@ function ScheduleFixtures() {
   const { data: league } = useAdminLeague(leagueId);
   const { data: approvedTeams } = useApprovedTeams(leagueId);
   const { data: fixtures, isLoading } = useAdminFixtures(leagueId);
+  const { data: adminProfiles } = useAdminProfiles();
   const generate = useGenerateRoundRobin(leagueId);
   const deleteAll = useDeleteAllFixtures(leagueId);
   const saveFixture = useSaveFixture(leagueId);
   const cancelFixture = useCancelFixture(leagueId);
+  const setObserver = useSetFixtureObserver(leagueId);
+  const setLobbyCode = useSetFixtureLobbyCode(leagueId);
 
   const accent = titleColors((league?.titles as any)?.slug ?? 'valorant');
   const [generateError, setGenerateError] = useState<string | null>(null);
@@ -529,10 +536,13 @@ function ScheduleFixtures() {
   const [editDate, setEditDate] = useState('');
   const [editTime, setEditTime] = useState('20:00');
   const [editBestOf, setEditBestOf] = useState(3);
+  const [editObserverId, setEditObserverId] = useState('');
+  const [editLobbyCode, setEditLobbyCode] = useState('');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   const active = (fixtures ?? []).filter((f) => f.status !== 'cancelled');
   const gamesPerOpponent = league?.games_per_opponent ?? 1;
+  const unobservedCount = active.filter((f) => f.status !== 'completed' && !f.observerId).length;
 
   const groups: { roundNumber: number; fixtures: AdminFixture[] }[] = [];
   for (const f of fixtures ?? []) {
@@ -560,12 +570,18 @@ function ScheduleFixtures() {
     setEditDate(d.toISOString().slice(0, 10));
     setEditTime(d.toISOString().slice(11, 16));
     setEditBestOf(f.bestOf);
+    setEditObserverId(f.observerId ?? '');
+    setEditLobbyCode(f.lobbyCode ?? '');
   }
 
   async function saveEdit(fixtureId: string) {
     const scheduledAt = parseDateTime(editDate, editTime);
     if (!scheduledAt) return;
-    await saveFixture.mutateAsync({ fixtureId, scheduledAt, bestOf: editBestOf });
+    await Promise.all([
+      saveFixture.mutateAsync({ fixtureId, scheduledAt, bestOf: editBestOf }),
+      setObserver.mutateAsync({ fixtureId, observerId: editObserverId || null }),
+      setLobbyCode.mutateAsync({ fixtureId, lobbyCode: editLobbyCode.trim() || null }),
+    ]);
     setEditingId(null);
   }
 
@@ -593,6 +609,7 @@ function ScheduleFixtures() {
           items={[
             { n: active.length, label: 'FIXTURES' },
             { n: approvedTeams?.length ?? 0, label: 'TEAMS APPROVED', fg: color.verified },
+            { n: unobservedCount, label: 'NEED AN OBSERVER', fg: unobservedCount ? color.ember : color.verified },
           ]}
         />
       }
@@ -668,6 +685,12 @@ function ScheduleFixtures() {
                             Bo{f.bestOf} · {formatGameWhen(f.scheduledAt)}
                             {completed ? ` · ${f.homeScore}–${f.awayScore}` : ''}
                           </Text>
+                          {!cancelled && !completed && (
+                            <Text style={[fixtureStyles.rowSub, !f.observerId && { color: color.ember }]}>
+                              {f.observerId ? `Observer: ${f.observerName}` : 'No observer assigned'}
+                              {f.lobbyCode ? ` · Lobby ${f.lobbyCode}` : ''}
+                            </Text>
+                          )}
                         </View>
 
                         {editing ? (
@@ -691,6 +714,21 @@ function ScheduleFixtures() {
                                 </Pressable>
                               ))}
                             </View>
+                            <AdminSelectField
+                              value={editObserverId}
+                              options={(adminProfiles ?? []).map((p) => ({ value: p.id, label: p.name }))}
+                              placeholder="Assign observer…"
+                              onChange={setEditObserverId}
+                              style={{ width: 160 }}
+                            />
+                            <TextInput
+                              value={editLobbyCode}
+                              onChangeText={setEditLobbyCode}
+                              placeholder="Lobby code"
+                              placeholderTextColor={color.fillPlaceholder}
+                              autoCapitalize="none"
+                              style={fixtureStyles.lobbyInput}
+                            />
                             <Pressable onPress={() => saveFixture.isPending ? null : saveEdit(f.id)}>
                               <Text style={fixtureStyles.saveLabel}>Save</Text>
                             </Pressable>
@@ -827,6 +865,7 @@ const fixtureStyles = StyleSheet.create({
   editRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, alignItems: 'center' },
   timeChip: { height: 34, paddingHorizontal: 10, borderWidth: 1, borderColor: color.hairlineInput, alignItems: 'center', justifyContent: 'center' },
   timeChipLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: color.textMuted, ...tabularNums },
+  lobbyInput: { height: 34, width: 110, backgroundColor: color.base, borderWidth: 1, borderColor: color.hairlineInput, color: color.textPrimary, fontFamily: fontFamily.interRegular, fontSize: 11, paddingHorizontal: 8 },
   saveLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.textPrimary },
   cancelEditLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.textMuted },
   editBtn: { paddingVertical: 7, paddingHorizontal: 12, borderWidth: 1, borderColor: color.hairlineStrong },
