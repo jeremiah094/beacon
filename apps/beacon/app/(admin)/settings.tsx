@@ -8,6 +8,8 @@ import { Spinner } from '../../components/Spinner';
 import { color, fontFamily, tabularNums } from '../../theme/tokens';
 import { REGIONS } from '../../lib/leagueOptions';
 import { useLeagueDefaults, useSaveLeagueDefaults } from '../../lib/api/adminSettings';
+import { useSession } from '../../lib/hooks/useSession';
+import { useMyStreamingAccount, useSaveTwitchLogin } from '../../lib/api/admin';
 
 // Not one of the 16 reference screens — the sidebar's "Settings" item was a
 // disabled placeholder with no defined scope. This covers the league-wide
@@ -16,8 +18,11 @@ import { useLeagueDefaults, useSaveLeagueDefaults } from '../../lib/api/adminSet
 // from — there's no per-league map pool field in the schema, so this is
 // the one global pool every league's schedule draws from.
 export default function AdminSettings() {
+  const { userId } = useSession();
   const { data: defaults, isLoading } = useLeagueDefaults();
   const save = useSaveLeagueDefaults();
+  const { data: streamingAccount } = useMyStreamingAccount(userId);
+  const saveTwitchLogin = useSaveTwitchLogin(userId);
 
   const [region, setRegion] = useState(REGIONS[0]);
   const [teams, setTeams] = useState(20);
@@ -25,6 +30,9 @@ export default function AdminSettings() {
   const [newMap, setNewMap] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
+  const [twitchInput, setTwitchInput] = useState('');
+  const [twitchLoaded, setTwitchLoaded] = useState(false);
+  const [twitchSaved, setTwitchSaved] = useState(false);
 
   useEffect(() => {
     if (defaults && !loaded) {
@@ -34,6 +42,21 @@ export default function AdminSettings() {
       setLoaded(true);
     }
   }, [defaults, loaded]);
+
+  useEffect(() => {
+    if (streamingAccount && !twitchLoaded) {
+      setTwitchInput(streamingAccount.twitchLogin ?? '');
+      setTwitchLoaded(true);
+    }
+  }, [streamingAccount, twitchLoaded]);
+
+  const twitchDirty = twitchLoaded && twitchInput.trim() !== (streamingAccount?.twitchLogin ?? '');
+
+  async function handleSaveTwitch() {
+    await saveTwitchLogin.mutateAsync(twitchInput.trim() || null);
+    setTwitchSaved(true);
+    setTimeout(() => setTwitchSaved(false), 3000);
+  }
 
   const dirty =
     loaded &&
@@ -137,6 +160,42 @@ export default function AdminSettings() {
       </View>
 
       <View style={styles.section}>
+        <Text style={styles.sectionLabel}>Streaming</Text>
+        <Text style={styles.sectionHint}>
+          If you're ever assigned as an observer, Beacon checks whether this channel is live and shows a "Watch"
+          link to admins and players — no account connection needed, just your public channel name.
+        </Text>
+        <View style={{ gap: 6 }}>
+          <Text style={styles.streamingPlatformLabel}>Twitch</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <TextInput
+              value={twitchInput}
+              onChangeText={(v) => { setTwitchInput(v); setTwitchSaved(false); }}
+              placeholder="your_channel_name"
+              placeholderTextColor={color.fillPlaceholder}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={styles.mapInput}
+            />
+            <AdminButton
+              label={twitchSaved ? 'Saved' : 'Save'}
+              variant="secondary"
+              disabled={!twitchDirty || saveTwitchLogin.isPending}
+              onPress={handleSaveTwitch}
+            />
+          </View>
+        </View>
+        <View style={{ gap: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={[styles.streamingPlatformLabel, { color: color.textMuted }]}>YouTube</Text>
+            <View style={styles.comingSoonChip}>
+              <Text style={styles.comingSoonLabel}>COMING SOON</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.section}>
         <Text style={styles.sectionLabel}>Account</Text>
         <Text style={styles.sectionHint}>Change the password for your own admin sign-in.</Text>
         <AdminButton label="Change password" variant="secondary" onPress={() => router.push('/reset-password')} />
@@ -198,4 +257,7 @@ const styles = StyleSheet.create({
   addMapBtn: { height: 42, paddingHorizontal: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: color.hairlineStrong },
   addMapBtnLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.textPrimary },
   savedText: { fontFamily: fontFamily.interMedium, fontSize: 12, color: color.verified },
+  streamingPlatformLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 13, color: color.textPrimary },
+  comingSoonChip: { borderWidth: 1, borderColor: color.neutralBorder, paddingVertical: 3, paddingHorizontal: 7 },
+  comingSoonLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.1 * 9, color: color.textMuted },
 });

@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 
 export type AdminNavCounts = {
@@ -62,4 +62,32 @@ async function fetchAdminProfiles(): Promise<AdminProfile[]> {
  * Valorant's fixtures Schedule screen. */
 export function useAdminProfiles() {
   return useQuery({ queryKey: ['adminProfiles'], queryFn: fetchAdminProfiles });
+}
+
+/** The signed-in admin's own Twitch channel login — set once, reused for
+ * every game/fixture they're assigned to observe (see
+ * poll_observer_streams / twitch-stream-status). No OAuth: a Twitch
+ * username is public, never a token. */
+export function useMyStreamingAccount(userId: string | undefined) {
+  return useQuery({
+    queryKey: ['myStreamingAccount', userId],
+    queryFn: async () => {
+      const { data } = await supabase.from('profiles').select('twitch_login').eq('id', userId as string).single();
+      return { twitchLogin: data?.twitch_login ?? null };
+    },
+    enabled: !!userId,
+  });
+}
+
+export function useSaveTwitchLogin(userId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (twitchLogin: string | null) => {
+      const { error } = await supabase.from('profiles').update({ twitch_login: twitchLogin }).eq('id', userId as string);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['myStreamingAccount', userId] });
+    },
+  });
 }

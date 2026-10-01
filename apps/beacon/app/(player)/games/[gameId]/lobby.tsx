@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ClipboardAPI from 'expo-clipboard';
@@ -77,6 +77,18 @@ export default function MatchLobby() {
             Lobby opens {formatClock(data.scheduledAt)} · be in the custom lobby before then
           </Text>
         </View>
+
+        {data.streamLive && (
+          <Pressable onPress={() => Linking.openURL(`https://twitch.tv/${data.observerTwitchLogin}`)}>
+            <View style={styles.watchLiveBanner}>
+              <View style={styles.liveSoonDot} />
+              <Text style={styles.watchLiveLabel}>
+                Observer is live on Twitch · {data.streamViewers ?? 0} watching
+              </Text>
+              <Text style={styles.watchLiveLink}>Watch →</Text>
+            </View>
+          </Pressable>
+        )}
 
         <CornerCut cut={22} fill={color.panel} strokeColor={color.emberBorderSoft} style={{ width: '100%' }}>
           <View style={styles.codeContent}>
@@ -178,6 +190,18 @@ const styles = StyleSheet.create({
   },
   liveSoonDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.ember },
   liveSoonLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.12 * 9, color: color.ember },
+  watchLiveBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    backgroundColor: color.emberTint,
+    borderWidth: 1,
+    borderColor: color.emberTintBorder,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+  },
+  watchLiveLabel: { flex: 1, fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.ember },
+  watchLiveLink: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.ember },
   countdownBlock: { alignItems: 'center', gap: 10, paddingVertical: 6 },
   countdownLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.16 * 10, color: color.ember },
   countdownValue: { fontFamily: fontFamily.rajdhaniBold, fontSize: 76, lineHeight: 76, letterSpacing: 0.02 * 76, color: color.ember },

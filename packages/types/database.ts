@@ -112,6 +112,10 @@ export type Database = {
           lineup_locked_at: string | null
           lobby_code: string | null
           observer_id: string | null
+          observer_stream_checked_at: string | null
+          observer_stream_live: boolean
+          observer_stream_title: string | null
+          observer_stream_viewers: number | null
           round_number: number
           scheduled_at: string
           status: string
@@ -128,6 +132,10 @@ export type Database = {
           lineup_locked_at?: string | null
           lobby_code?: string | null
           observer_id?: string | null
+          observer_stream_checked_at?: string | null
+          observer_stream_live?: boolean
+          observer_stream_title?: string | null
+          observer_stream_viewers?: number | null
           round_number: number
           scheduled_at: string
           status?: string
@@ -144,6 +152,10 @@ export type Database = {
           lineup_locked_at?: string | null
           lobby_code?: string | null
           observer_id?: string | null
+          observer_stream_checked_at?: string | null
+          observer_stream_live?: boolean
+          observer_stream_title?: string | null
+          observer_stream_viewers?: number | null
           round_number?: number
           scheduled_at?: string
           status?: string
@@ -262,6 +274,10 @@ export type Database = {
           lobby_code: string | null
           map: string | null
           observer_id: string | null
+          observer_stream_checked_at: string | null
+          observer_stream_live: boolean
+          observer_stream_title: string | null
+          observer_stream_viewers: number | null
           round_number: number
           scheduled_at: string
           status: string
@@ -274,6 +290,10 @@ export type Database = {
           lobby_code?: string | null
           map?: string | null
           observer_id?: string | null
+          observer_stream_checked_at?: string | null
+          observer_stream_live?: boolean
+          observer_stream_title?: string | null
+          observer_stream_viewers?: number | null
           round_number?: number
           scheduled_at: string
           status?: string
@@ -286,6 +306,10 @@ export type Database = {
           lobby_code?: string | null
           map?: string | null
           observer_id?: string | null
+          observer_stream_checked_at?: string | null
+          observer_stream_live?: boolean
+          observer_stream_title?: string | null
+          observer_stream_viewers?: number | null
           round_number?: number
           scheduled_at?: string
           status?: string
@@ -637,6 +661,8 @@ export type Database = {
           gamertag: string | null
           id: string
           is_admin: boolean
+          twitch_login: string | null
+          youtube_channel_id: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -645,6 +671,8 @@ export type Database = {
           gamertag?: string | null
           id: string
           is_admin?: boolean
+          twitch_login?: string | null
+          youtube_channel_id?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -653,6 +681,8 @@ export type Database = {
           gamertag?: string | null
           id?: string
           is_admin?: boolean
+          twitch_login?: string | null
+          youtube_channel_id?: string | null
         }
         Relationships: []
       }

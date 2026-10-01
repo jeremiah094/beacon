@@ -15,12 +15,17 @@ export type MatchLobbyData = {
   lockedAt: string | null;
   status: string;
   trio: LobbyPlayer[];
+  streamLive: boolean;
+  streamViewers: number | null;
+  observerTwitchLogin: string | null;
 };
 
 async function fetchMatchLobby(gameId: string, teamId: string): Promise<MatchLobbyData> {
   const { data: game } = await supabase
     .from('games')
-    .select('round_number, game_number, scheduled_at, map, lobby_code, status, leagues(name)')
+    .select(
+      'round_number, game_number, scheduled_at, map, lobby_code, status, observer_stream_live, observer_stream_viewers, leagues(name), observer:profiles!games_observer_id_fkey(twitch_login)',
+    )
     .eq('id', gameId)
     .single();
 
@@ -56,6 +61,9 @@ async function fetchMatchLobby(gameId: string, teamId: string): Promise<MatchLob
     lockedAt: lineup?.locked_at ?? null,
     status: game?.status ?? 'scheduled',
     trio,
+    streamLive: game?.observer_stream_live ?? false,
+    streamViewers: game?.observer_stream_viewers ?? null,
+    observerTwitchLogin: (game?.observer as any)?.twitch_login ?? null,
   };
 }
 

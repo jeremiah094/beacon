@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ClipboardAPI from 'expo-clipboard';
 import { AdminShell } from '../../../../components/admin/AdminShell';
@@ -241,6 +241,26 @@ export default function MonitorLiveMatch() {
               </View>
             )}
           </View>
+
+          <View style={styles.stripDivider} />
+
+          <View style={{ gap: 9 }}>
+            <Text style={[styles.stripLabel, { color: game.streamLive ? color.ember : color.textMuted }]}>OBSERVER STREAM</Text>
+            {!game.observerId ? (
+              <Text style={styles.streamOfflineText}>No observer assigned</Text>
+            ) : !game.observerTwitchLogin ? (
+              <Text style={styles.streamOfflineText}>{game.observerName} hasn't connected Twitch</Text>
+            ) : game.streamLive ? (
+              <Pressable onPress={() => Linking.openURL(`https://twitch.tv/${game.observerTwitchLogin}`)}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <View style={styles.liveDot} />
+                  <Text style={styles.streamLiveText}>{game.streamViewers ?? 0} watching · Watch →</Text>
+                </View>
+              </Pressable>
+            ) : (
+              <Text style={styles.streamOfflineText}>{game.observerName} · offline</Text>
+            )}
+          </View>
         </View>
       }
       rail={
@@ -426,6 +446,9 @@ const styles = StyleSheet.create({
   copyLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.08 * 10 },
   codeBox: { flex: 1, height: 52, minWidth: 32, backgroundColor: color.panel, borderWidth: 1, borderColor: color.hairlineInput, alignItems: 'center', justifyContent: 'center' },
   codeChar: { fontFamily: fontFamily.rajdhaniBold, fontSize: 26, letterSpacing: 0.04 * 26, color: color.textPrimary },
+  streamOfflineText: { fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted },
+  streamLiveText: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.ember },
+  liveDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: color.ember },
   codeInput: {
     height: 44,
     width: 140,

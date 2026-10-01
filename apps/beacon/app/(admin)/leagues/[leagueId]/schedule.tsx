@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { AdminShell } from '../../../../components/admin/AdminShell';
 import { AdminButton } from '../../../../components/admin/AdminButton';
@@ -710,6 +710,13 @@ function ScheduleFixtures() {
                               {f.lobbyCode ? ` · Lobby ${f.lobbyCode}` : ''}
                             </Text>
                           )}
+                          {!cancelled && !completed && f.streamLive && (
+                            <Pressable onPress={() => Linking.openURL(`https://twitch.tv/${f.observerTwitchLogin}`)}>
+                              <Text style={fixtureStyles.streamLiveText}>
+                                ● LIVE · {f.streamViewers ?? 0} watching · Watch →
+                              </Text>
+                            </Pressable>
+                          )}
                         </View>
 
                         {editing ? (
@@ -881,6 +888,7 @@ const fixtureStyles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 14, padding: 16, paddingHorizontal: 18 },
   rowTitle: { fontFamily: fontFamily.rajdhaniSemiBold, fontSize: 17, letterSpacing: 0.01 * 17, color: color.textPrimary },
   rowSub: { fontFamily: fontFamily.interRegular, fontSize: 11, color: color.textMuted, ...tabularNums },
+  streamLiveText: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: color.ember },
   editRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, alignItems: 'center' },
   timeChip: { height: 34, paddingHorizontal: 10, borderWidth: 1, borderColor: color.hairlineInput, alignItems: 'center', justifyContent: 'center' },
   timeChipLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: color.textMuted, ...tabularNums },

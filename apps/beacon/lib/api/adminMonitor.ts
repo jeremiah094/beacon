@@ -33,6 +33,13 @@ export type MonitorGame = {
   status: string;
   lobbyCode: string | null;
   lineupLockedAt: string | null;
+  observerId: string | null;
+  observerName: string | null;
+  observerTwitchLogin: string | null;
+  streamLive: boolean;
+  streamTitle: string | null;
+  streamViewers: number | null;
+  streamCheckedAt: string | null;
   teams: MonitorTeam[];
   auditLog: AuditEntry[];
 };
@@ -44,7 +51,9 @@ function displayName(p: { display_name: string | null; gamertag: string | null }
 async function fetchMonitor(gameId: string): Promise<MonitorGame> {
   const { data: game, error } = await supabase
     .from('games')
-    .select('id, league_id, round_number, game_number, scheduled_at, map, status, lobby_code, lineup_locked_at, leagues(name)')
+    .select(
+      'id, league_id, round_number, game_number, scheduled_at, map, status, lobby_code, lineup_locked_at, observer_id, observer_stream_live, observer_stream_title, observer_stream_viewers, observer_stream_checked_at, leagues(name), observer:profiles!games_observer_id_fkey(display_name, gamertag, twitch_login)',
+    )
     .eq('id', gameId)
     .single();
   if (error || !game) throw error ?? new Error('Game not found');
@@ -146,6 +155,13 @@ async function fetchMonitor(gameId: string): Promise<MonitorGame> {
     status: game.status,
     lobbyCode: game.lobby_code,
     lineupLockedAt: game.lineup_locked_at,
+    observerId: game.observer_id,
+    observerName: game.observer ? displayName(game.observer as any) : null,
+    observerTwitchLogin: (game.observer as any)?.twitch_login ?? null,
+    streamLive: game.observer_stream_live,
+    streamTitle: game.observer_stream_title,
+    streamViewers: game.observer_stream_viewers,
+    streamCheckedAt: game.observer_stream_checked_at,
     teams,
     auditLog: auditLog.slice(0, 5),
   };

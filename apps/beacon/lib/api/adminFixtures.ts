@@ -40,13 +40,16 @@ export type AdminFixture = {
   lobbyCode: string | null;
   observerId: string | null;
   observerName: string | null;
+  observerTwitchLogin: string | null;
+  streamLive: boolean;
+  streamViewers: number | null;
 };
 
 async function fetchAdminFixtures(leagueId: string): Promise<AdminFixture[]> {
   const { data } = await supabase
     .from('fixtures')
     .select(
-      'id, round_number, scheduled_at, best_of, status, home_score, away_score, winner_team_id, lobby_code, observer_id, home_team:teams!fixtures_home_team_id_fkey(id, name), away_team:teams!fixtures_away_team_id_fkey(id, name), observer:profiles!fixtures_observer_id_fkey(display_name, gamertag)',
+      'id, round_number, scheduled_at, best_of, status, home_score, away_score, winner_team_id, lobby_code, observer_id, observer_stream_live, observer_stream_viewers, home_team:teams!fixtures_home_team_id_fkey(id, name), away_team:teams!fixtures_away_team_id_fkey(id, name), observer:profiles!fixtures_observer_id_fkey(display_name, gamertag, twitch_login)',
     )
     .eq('league_id', leagueId)
     .order('round_number', { ascending: true })
@@ -68,6 +71,9 @@ async function fetchAdminFixtures(leagueId: string): Promise<AdminFixture[]> {
     lobbyCode: f.lobby_code,
     observerId: f.observer_id,
     observerName: f.observer_id ? ((f.observer as any)?.display_name ?? (f.observer as any)?.gamertag ?? 'Admin') : null,
+    observerTwitchLogin: (f.observer as any)?.twitch_login ?? null,
+    streamLive: f.observer_stream_live,
+    streamViewers: f.observer_stream_viewers,
   }));
 }
 
