@@ -1,16 +1,20 @@
-// match-notify — BUILD.md §5. Two triggers call this (see
-// 20260914131000_match_notify_triggers.sql via pg_net, fire-and-forget):
+// match-notify — BUILD.md §5. Triggers call this (see
+// 20260914131000_match_notify_triggers.sql via pg_net, fire-and-forget, and
+// twitch-stream-status via a plain fetch on the same fire-and-forget basis):
 //  - "new_match": games AFTER INSERT, when the league is published.
 //  - "lock_soon": the same cron tick that locks a game's lineups at T-10m
 //    (BUILD.md: "this notification also represents the moment team
 //    lineups lock for that game" — one moment, one push).
+//  - "stream_live": twitch-stream-status, the moment a game's observer
+//    transitions from offline to live (edge-triggered, never per poll tick
+//    — the cron runs every minute and would otherwise spam the same push).
 // Recipients are every member of every team approved for the league;
-// lock_soon additionally excludes anyone who muted that specific game
-// (screen 07's per-game bell — notification_prefs).
+// lock_soon and stream_live additionally exclude anyone who muted that
+// specific game (screen 07's per-game bell — notification_prefs).
 import { createClient } from "jsr:@supabase/supabase-js@2";
 import webpush from "npm:web-push@3";
 
-type NotifyBody = { type: "new_match" | "lock_soon"; gameId: string };
+type NotifyBody = { type: "new_match" | "lock_soon" | "stream_live"; gameId: string };
 
 const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY");
 const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY");
@@ -62,7 +66,7 @@ Deno.serve(async (req: Request) => {
   const { data: members } = await supabase.from("team_members").select("profile_id").in("team_id", teamIds);
   let profileIds = [...new Set((members ?? []).map((m) => m.profile_id))];
 
-  if (body.type === "lock_soon") {
+  if (body.type === "lock_soon" || body.type === "stream_live") {
     const { data: muted } = await supabase
       .from("notification_prefs")
       .select("profile_id")
@@ -93,11 +97,17 @@ Deno.serve(async (req: Request) => {
           message: `${leagueName} added ${matchLabel} — ${when}${game.map ? `, ${game.map}` : ""}. 20-team lobby.`,
           data: { url: `/games` },
         }
-      : {
-          title: "Lobby opens in 10 minutes",
-          message: `${matchLabel} · ${leagueName}. Lineups are locked as of now. Tap to open your lobby code.`,
-          data: { url: `/games/${game.id}/lobby` },
-        };
+      : body.type === "lock_soon"
+        ? {
+            title: "Lobby opens in 10 minutes",
+            message: `${matchLabel} · ${leagueName}. Lineups are locked as of now. Tap to open your lobby code.`,
+            data: { url: `/games/${game.id}/lobby` },
+          }
+        : {
+            title: "Observer is live on Twitch",
+            message: `${matchLabel} · ${leagueName} is streaming now${game.map ? ` on ${game.map}` : ""}. Tap to watch.`,
+            data: { url: `/games/${game.id}/lobby` },
+          };
 
   // In-app inbox row for every recipient, independent of whether they have
   // any push token at all — the reliable fallback for players who never
