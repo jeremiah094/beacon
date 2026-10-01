@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { router } from 'expo-router';
 import * as Device from 'expo-device';
@@ -124,10 +124,17 @@ export function useNotificationDeepLinks() {
 
     function handle(response: Notifications.NotificationResponse) {
       const url = response.notification.request.content.data?.url as string | undefined;
-      if (url) {
-        const path = url.replace(/^beacon:\/\//, '/');
-        router.push(path as any);
+      if (!url) return;
+      // stream_live (match-notify) sets this to the actual Twitch URL, not
+      // an in-app path — the whole point of that notification is "go
+      // watch," so it should leave the app directly rather than landing on
+      // the lobby screen first and requiring a second tap on Watch →.
+      if (/^https?:\/\//.test(url)) {
+        Linking.openURL(url);
+        return;
       }
+      const path = url.replace(/^beacon:\/\//, '/');
+      router.push(path as any);
     }
 
     Notifications.getLastNotificationResponseAsync().then((response) => {

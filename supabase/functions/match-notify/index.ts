@@ -36,7 +36,9 @@ Deno.serve(async (req: Request) => {
 
   const { data: game } = await supabase
     .from("games")
-    .select("id, round_number, game_number, scheduled_at, map, lobby_code, league_id, leagues(name)")
+    .select(
+      "id, round_number, game_number, scheduled_at, map, lobby_code, league_id, leagues(name), observer:profiles!games_observer_id_fkey(twitch_login)",
+    )
     .eq("id", body.gameId)
     .single();
 
@@ -86,10 +88,13 @@ Deno.serve(async (req: Request) => {
 
   const matchLabel = `Match ${game.round_number} · Game ${game.game_number}`;
 
-  // Plain in-app paths, not a beacon:// scheme — native's deep-link handler
-  // (useNotificationDeepLinks) already strips a beacon:// prefix if one is
-  // there, so a bare path passes through unchanged, and the web service
-  // worker's notificationclick handler uses the same path directly.
+  // new_match/lock_soon are plain in-app paths, not a beacon:// scheme —
+  // native's deep-link handler (useNotificationDeepLinks) already strips a
+  // beacon:// prefix if one is there, so a bare path passes through
+  // unchanged, and the web service worker's notificationclick handler uses
+  // the same path directly. stream_live is the one exception: a real
+  // https:// URL, which both handlers open externally instead of routing
+  // in-app (see the stream_live case below).
   const { title, message, data } =
     body.type === "new_match"
       ? {
@@ -106,7 +111,18 @@ Deno.serve(async (req: Request) => {
         : {
             title: "Observer is live on Twitch",
             message: `${matchLabel} · ${leagueName} is streaming now${game.map ? ` on ${game.map}` : ""}. Tap to watch.`,
-            data: { url: `/games/${game.id}/lobby` },
+            // A real https:// URL here, not an in-app path — the native
+            // deep-link handler (useNotificationDeepLinks) opens it
+            // directly via Linking.openURL rather than routing in-app, so
+            // tapping this notification goes straight to the stream. Falls
+            // back to the lobby screen only if the observer's Twitch login
+            // somehow isn't set (shouldn't happen — we only notify once
+            // Get Streams has already confirmed them live under that login).
+            data: {
+              url: (game.observer as any)?.twitch_login
+                ? `https://twitch.tv/${(game.observer as any).twitch_login}`
+                : `/games/${game.id}/lobby`,
+            },
           };
 
   // In-app inbox row for every recipient, independent of whether they have

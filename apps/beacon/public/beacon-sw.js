@@ -22,9 +22,18 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const path = event.notification.data?.url || '/';
-  const target = self.location.origin + path;
+  const url = event.notification.data?.url || '/';
+  const isExternal = /^https?:\/\//.test(url);
 
+  // stream_live (match-notify) sets this to a real https:// Twitch URL,
+  // not an in-app path — open it in its own tab rather than navigating
+  // the existing Beacon tab away from itself.
+  if (isExternal) {
+    event.waitUntil(self.clients.openWindow(url));
+    return;
+  }
+
+  const target = self.location.origin + url;
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       for (const client of clients) {
