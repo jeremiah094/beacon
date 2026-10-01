@@ -33,6 +33,7 @@ export default function AdminSettings() {
   const [twitchInput, setTwitchInput] = useState('');
   const [twitchLoaded, setTwitchLoaded] = useState(false);
   const [twitchSaved, setTwitchSaved] = useState(false);
+  const [twitchError, setTwitchError] = useState<string | null>(null);
 
   useEffect(() => {
     if (defaults && !loaded) {
@@ -53,9 +54,15 @@ export default function AdminSettings() {
   const twitchDirty = twitchLoaded && twitchInput.trim() !== (streamingAccount?.twitchLogin ?? '');
 
   async function handleSaveTwitch() {
-    await saveTwitchLogin.mutateAsync(twitchInput.trim() || null);
-    setTwitchSaved(true);
-    setTimeout(() => setTwitchSaved(false), 3000);
+    setTwitchError(null);
+    try {
+      await saveTwitchLogin.mutateAsync(twitchInput.trim() || null);
+      setTwitchSaved(true);
+      setTimeout(() => setTwitchSaved(false), 3000);
+    } catch (err) {
+      const message = (err as { message?: string } | null)?.message;
+      setTwitchError(message || 'Could not save your Twitch channel. Try again.');
+    }
   }
 
   const dirty =
@@ -170,7 +177,7 @@ export default function AdminSettings() {
           <View style={{ flexDirection: 'row', gap: 8 }}>
             <TextInput
               value={twitchInput}
-              onChangeText={(v) => { setTwitchInput(v); setTwitchSaved(false); }}
+              onChangeText={(v) => { setTwitchInput(v); setTwitchSaved(false); setTwitchError(null); }}
               placeholder="your_channel_name"
               placeholderTextColor={color.fillPlaceholder}
               autoCapitalize="none"
@@ -184,6 +191,12 @@ export default function AdminSettings() {
               onPress={handleSaveTwitch}
             />
           </View>
+          {twitchError && (
+            <View style={styles.noteRow}>
+              <View style={styles.noteBar} />
+              <Text style={styles.noteText}>{twitchError}</Text>
+            </View>
+          )}
         </View>
         <View style={{ gap: 6 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -260,4 +273,7 @@ const styles = StyleSheet.create({
   streamingPlatformLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 13, color: color.textPrimary },
   comingSoonChip: { borderWidth: 1, borderColor: color.neutralBorder, paddingVertical: 3, paddingHorizontal: 7 },
   comingSoonLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.1 * 9, color: color.textMuted },
+  noteRow: { flexDirection: 'row', gap: 9, alignItems: 'flex-start' },
+  noteBar: { width: 3, alignSelf: 'stretch', backgroundColor: 'rgba(242,241,236,0.35)' },
+  noteText: { flex: 1, fontFamily: fontFamily.interRegular, fontSize: 12, lineHeight: 17, color: color.textMuted },
 });
