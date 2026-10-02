@@ -34,7 +34,13 @@ export default function MatchLobby() {
   }
 
   const code = data.lobbyCode ?? '';
-  const codeChars = Array.from({ length: 5 }).map((_, i) => code[i] ?? '');
+  // Apex custom lobby codes run 8-10 characters — size the box row to the
+  // actual code once it's set, falling back to a sensible placeholder
+  // count beforehand rather than a fixed 5 that never fit a real code.
+  const codeLength = code ? code.length : 8;
+  const codeChars = Array.from({ length: codeLength }).map((_, i) => code[i] ?? '');
+  const codeCellGap = codeLength > 8 ? 5 : codeLength > 6 ? 6 : 8;
+  const codeCharFontSize = codeLength > 8 ? 18 : codeLength > 6 ? 22 : 34;
 
   async function handleCopy() {
     if (!code) return;
@@ -80,13 +86,18 @@ export default function MatchLobby() {
 
         {data.streamLive && (
           <Pressable onPress={() => Linking.openURL(`https://twitch.tv/${data.observerTwitchLogin}`)}>
-            <View style={styles.watchLiveBanner}>
-              <View style={styles.liveSoonDot} />
-              <Text style={styles.watchLiveLabel}>
-                Observer is live on Twitch · {data.streamViewers ?? 0} watching
-              </Text>
-              <Text style={styles.watchLiveLink}>Watch →</Text>
-            </View>
+            {({ pressed, hovered }: any) => (
+              <View
+                style={[
+                  styles.liveStreamButton,
+                  { backgroundColor: pressed ? color.emberActive : hovered ? color.emberHover : color.ember },
+                ]}
+              >
+                <View style={styles.liveStreamDot} />
+                <Text style={styles.liveStreamLabel}>Live Stream</Text>
+                <Text style={styles.liveStreamSub}>{data.streamViewers ?? 0} watching</Text>
+              </View>
+            )}
           </Pressable>
         )}
 
@@ -99,10 +110,10 @@ export default function MatchLobby() {
               </Text>
             </View>
 
-            <View style={styles.codeRow}>
+            <View style={[styles.codeRow, { gap: codeCellGap }]}>
               {codeChars.map((ch, i) => (
                 <View key={i} style={styles.codeCell}>
-                  <Text style={[styles.codeChar, tabularNums]}>{ch}</Text>
+                  <Text style={[styles.codeChar, tabularNums, { fontSize: codeCharFontSize }]}>{ch}</Text>
                 </View>
               ))}
             </View>
@@ -190,18 +201,18 @@ const styles = StyleSheet.create({
   },
   liveSoonDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: color.ember },
   liveSoonLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.12 * 9, color: color.ember },
-  watchLiveBanner: {
+  liveStreamButton: {
+    height: 52,
+    borderWidth: 1,
+    borderColor: color.ember,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 9,
-    backgroundColor: color.emberTint,
-    borderWidth: 1,
-    borderColor: color.emberTintBorder,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
   },
-  watchLiveLabel: { flex: 1, fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.ember },
-  watchLiveLink: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.ember },
+  liveStreamDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: color.base },
+  liveStreamLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 15, color: color.base },
+  liveStreamSub: { fontFamily: fontFamily.interRegular, fontSize: 12, color: color.base, opacity: 0.85 },
   countdownBlock: { alignItems: 'center', gap: 10, paddingVertical: 6 },
   countdownLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.16 * 10, color: color.ember },
   countdownValue: { fontFamily: fontFamily.rajdhaniBold, fontSize: 76, lineHeight: 76, letterSpacing: 0.02 * 76, color: color.ember },

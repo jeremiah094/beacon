@@ -309,7 +309,7 @@ function ScheduleMatchesApex() {
     >
       <View style={[styles.formRow, isMobile && styles.formRowMobile]}>
         <Field label="Match" style={isMobile ? { width: '100%' } : { width: 110 }}>
-          <TextInput value={round} onChangeText={(v) => { setRound(v); setJustPublishedId(null); }} placeholder="10" placeholderTextColor={color.fillPlaceholder} keyboardType="number-pad" style={[styles.input, tabularNums]} />
+          <TextInput value={round} onChangeText={(v) => { setRound(v); setJustPublishedId(null); }} placeholder="1" placeholderTextColor={color.fillPlaceholder} keyboardType="number-pad" style={[styles.input, tabularNums]} />
         </Field>
         <Field label="Game" style={isMobile ? { width: '100%' } : { flex: 1 }}>
           <TextInput value={gameNumber} onChangeText={(v) => { setGameNumber(v); setJustPublishedId(null); }} placeholder="1" placeholderTextColor={color.fillPlaceholder} keyboardType="number-pad" style={[styles.input, tabularNums]} />

@@ -44,7 +44,7 @@ export default function CreateOrEditLeague() {
   const isHeadToHead = title.formatType === 'head_to_head';
 
   const [name, setName] = useState('');
-  const [seasonLabel, setSeasonLabel] = useState('Season 3');
+  const [seasonLabel, setSeasonLabel] = useState('Season 1');
   const [region, setRegion] = useState(REGIONS[0]);
   const [teams, setTeams] = useState(20);
   const [gamesPerOpponent, setGamesPerOpponent] = useState<1 | 2>(1);
@@ -230,7 +230,7 @@ export default function CreateOrEditLeague() {
           <TextInput value={name} onChangeText={setName} placeholder="e.g. Beacon Division Two" placeholderTextColor={color.fillPlaceholder} style={styles.input} />
         </Field>
         <Field label="Season label">
-          <TextInput value={seasonLabel} onChangeText={setSeasonLabel} placeholder="Season 3" placeholderTextColor={color.fillPlaceholder} style={styles.input} />
+          <TextInput value={seasonLabel} onChangeText={setSeasonLabel} placeholder="Season 1" placeholderTextColor={color.fillPlaceholder} style={styles.input} />
         </Field>
       </View>
 
