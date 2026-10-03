@@ -9,11 +9,17 @@ export type AdminLeagueSummary = {
   pendingTeams: number;
 };
 
-async function fetchAdminLeagues(titleSlug: string): Promise<AdminLeagueSummary[]> {
+async function fetchAdminLeagues(titleSlug: string, userId: string): Promise<AdminLeagueSummary[]> {
+  // Admin-scoped leagues (decentralized-leagues option 1): RLS already
+  // lets any admin read every *published* league (players need that), so
+  // this screen needs its own explicit filter on top to show only the
+  // leagues this admin actually created — otherwise another admin's
+  // published league would still show up here once it goes live.
   const { data: leagues } = await supabase
     .from('leagues')
     .select('id, name, status, titles!inner(slug)')
     .eq('titles.slug', titleSlug)
+    .eq('created_by', userId)
     .order('created_at', { ascending: false });
   if (!leagues || leagues.length === 0) return [];
 
@@ -37,8 +43,12 @@ async function fetchAdminLeagues(titleSlug: string): Promise<AdminLeagueSummary[
   });
 }
 
-export function useAdminLeagues(titleSlug: string = 'apex') {
-  return useQuery({ queryKey: ['adminLeagues', titleSlug], queryFn: () => fetchAdminLeagues(titleSlug) });
+export function useAdminLeagues(titleSlug: string = 'apex', userId: string | undefined = undefined) {
+  return useQuery({
+    queryKey: ['adminLeagues', titleSlug, userId],
+    queryFn: () => fetchAdminLeagues(titleSlug, userId as string),
+    enabled: !!userId,
+  });
 }
 
 export type LeagueFormData = {

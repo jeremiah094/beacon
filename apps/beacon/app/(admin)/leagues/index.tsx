@@ -10,6 +10,7 @@ import { Spinner } from '../../../components/Spinner';
 import { color, fontFamily } from '../../../theme/tokens';
 import { AdminLeagueSummary, useAdminLeagues, useDeleteLeague } from '../../../lib/api/adminLeagues';
 import { useActiveAdminTitle } from '../../../lib/hooks/useActiveAdminTitle';
+import { useSession } from '../../../lib/hooks/useSession';
 import { titleMeta } from '../../../lib/titles';
 
 // Not one of the 16 reference screens — necessary connective tissue: the
@@ -17,8 +18,9 @@ import { titleMeta } from '../../../lib/titles';
 // somewhere to pick a league from.
 export default function AdminLeaguesList() {
   const { activeAdminTitleSlug } = useActiveAdminTitle();
+  const { userId } = useSession();
   const title = titleMeta(activeAdminTitleSlug ?? 'apex');
-  const { data: leagues, isLoading } = useAdminLeagues(title.slug);
+  const { data: leagues, isLoading } = useAdminLeagues(title.slug, userId);
   const deleteLeague = useDeleteLeague();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
