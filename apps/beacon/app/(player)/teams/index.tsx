@@ -158,7 +158,12 @@ export default function MyTeams() {
               team={t}
               isActive={t.id === activeTeamId}
               onSelect={() => setActiveTeam(t.id)}
-              onManage={() => router.push({ pathname: '/(player)/teams/[teamId]/lineup', params: { teamId: t.id } } as any)}
+              onManage={() =>
+                router.push({
+                  pathname: title.formatType === 'head_to_head' ? '/(player)/teams/[teamId]/fixture-lineup' : '/(player)/teams/[teamId]/lineup',
+                  params: { teamId: t.id },
+                } as any)
+              }
             />
           ))
         )}

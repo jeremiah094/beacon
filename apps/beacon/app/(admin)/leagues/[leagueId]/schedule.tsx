@@ -776,6 +776,9 @@ function ScheduleFixtures() {
                             )}
                             {!cancelled && !completed && (
                               <>
+                                <Pressable onPress={() => router.push(`/(admin)/fixtures/${f.id}/monitor` as any)}>
+                                  <AdminChip label="MONITOR" tone="ember" dotShape="circle" />
+                                </Pressable>
                                 <Pressable onPress={() => router.push(`/(admin)/fixtures/${f.id}/verify` as any)}>
                                   <View style={fixtureStyles.editBtn}>
                                     <Text style={fixtureStyles.editBtnLabel}>Enter scores</Text>

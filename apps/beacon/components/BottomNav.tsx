@@ -2,6 +2,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { color, fontFamily } from '../theme/tokens';
+import { useActiveTitle } from '../lib/hooks/useActiveTitle';
+import { titleMeta } from '../lib/titles';
 
 type TabKey = 'stats' | 'leagues' | 'teams' | 'games' | 'profile';
 
@@ -28,17 +30,23 @@ const TABS: {
  * standings) keeps its own back arrow instead. */
 export function BottomNav({ active }: { active: TabKey }) {
   const pathname = usePathname();
+  const { activeTitleSlug } = useActiveTitle();
+  // "Games" is battle_royale vocabulary — a head-to-head title (Valorant)
+  // plays fixtures, not games, so this tab repoints to the fixtures list
+  // instead of leaving it permanently empty (games/index.tsx is Apex-only).
+  const isHeadToHead = titleMeta(activeTitleSlug ?? 'apex').formatType === 'head_to_head';
 
   return (
     <View style={styles.bar}>
       {TABS.map((tab) => {
         const isActive = tab.key === active;
+        const href = tab.key === 'games' && isHeadToHead ? '/(player)/fixtures' : tab.href;
         return (
           <Pressable
             key={tab.key}
             style={styles.tab}
             onPress={() => {
-              if (pathname !== `/${tab.key}`) router.push(tab.href as any);
+              if (pathname !== `/${tab.key}`) router.push(href as any);
             }}
           >
             {({ hovered }: any) => (
