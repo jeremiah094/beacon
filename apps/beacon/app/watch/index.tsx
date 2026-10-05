@@ -6,6 +6,7 @@ import { Spinner } from '../../components/Spinner';
 import { CornerCut } from '../../components/CornerCut';
 import { color, fontFamily, titleColors } from '../../theme/tokens';
 import { PublicLeagueSummary, usePublicLeagues } from '../../lib/api/publicWatch';
+import { useDocumentTitle } from '../../lib/hooks/useDocumentTitle';
 
 // Public, no-session league list — beaconproject.eu/watch. Every league
 // here is already visible to a signed-out visitor at the data layer (see
@@ -14,6 +15,7 @@ import { PublicLeagueSummary, usePublicLeagues } from '../../lib/api/publicWatch
 // Google to actually have something to index and rank.
 export default function PublicWatchIndex() {
   const { data: leagues, isLoading } = usePublicLeagues();
+  useDocumentTitle('Watch — League Standings & Live Results — Beacon');
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>

@@ -11,6 +11,7 @@ import {
   usePublicLeagueDetail,
   usePublicObserverHandle,
 } from '../../lib/api/publicWatch';
+import { useDocumentTitle } from '../../lib/hooks/useDocumentTitle';
 
 // Public, no-session league page — standings + schedule/live results +
 // the observer's Twitch link when one's live. Realtime-subscribed (see
@@ -21,6 +22,7 @@ import {
 export default function PublicWatchLeague() {
   const { leagueId } = useLocalSearchParams<{ leagueId: string }>();
   const { data: league, isLoading } = usePublicLeagueDetail(leagueId);
+  useDocumentTitle(league ? `${league.name} — Standings & Results — Beacon` : null);
 
   if (isLoading || !league) {
     return (

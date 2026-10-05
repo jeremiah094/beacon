@@ -32,6 +32,15 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="description" content={DEFAULT_DESCRIPTION} />
         <link rel="canonical" href={SITE_URL} />
 
+        {/* Expo auto-injects <link rel="icon" href="/favicon.ico"> from
+            app.json's web.favicon, but that .ico only carries 16x16/32x32
+            variants — below Google's documented 48x48 minimum for a
+            search-result site icon, likely why none showed up. This adds
+            the same 1024x1024 app icon og:image already uses, which meets
+            that minimum outright. */}
+        <link rel="icon" type="image/png" sizes="1024x1024" href={`${SITE_URL}/icon.png`} />
+        <link rel="apple-touch-icon" href={`${SITE_URL}/icon.png`} />
+
         <meta property="og:type" content="website" />
         <meta property="og:site_name" content={SITE_NAME} />
         <meta property="og:url" content={SITE_URL} />

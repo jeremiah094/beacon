@@ -20,6 +20,7 @@ import {
 import { color } from '../theme/tokens';
 import { useSession } from '../lib/hooks/useSession';
 import { useNotificationDeepLinks, usePushRegistration } from '../lib/hooks/usePushRegistration';
+import { useDocumentTitleEnforcer } from '../lib/hooks/useDocumentTitle';
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -89,5 +90,6 @@ function AppShell() {
   const { userId } = useSession();
   usePushRegistration(userId);
   useNotificationDeepLinks();
+  useDocumentTitleEnforcer();
   return null;
 }

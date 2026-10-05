@@ -3,6 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { color, fontFamily } from '../theme/tokens';
+import { useDocumentTitle } from '../lib/hooks/useDocumentTitle';
 
 type Props = {
   title: string;
@@ -15,6 +16,8 @@ type Props = {
  * platform (web footer/nav, native Settings), so there's no reason for
  * either to redefine the header/back-button/scroll boilerplate. */
 export function LegalPageShell({ title, updated, children }: Props) {
+  useDocumentTitle(`${title} — Beacon`);
+
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
       <View style={styles.header}>
