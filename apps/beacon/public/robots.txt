@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+# Everything except the homepage, Privacy Policy and Terms of Service sits
+# behind a sign-in gate (RequireSession) and redirects an unauthenticated
+# visitor — bot or human — straight to /sign-up, so there's nothing to
+# explicitly disallow: there's no content there to crawl either way.
+# expo-router's (auth)/(player)/(admin) route groups don't appear in the
+# real URL (e.g. app/(player)/stats.tsx serves at /stats, not
+# /(player)/stats), so a path-prefix Disallow couldn't target them
+# correctly even if there were something worth blocking.
+
+Sitemap: https://beaconproject.eu/sitemap.xml
