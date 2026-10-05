@@ -58,6 +58,9 @@ export function LandingPage() {
             <Text style={styles.wordmark}>BEACON</Text>
           </View>
           <View style={styles.navLinks}>
+            <Pressable onPress={() => router.push('/watch' as any)}>
+              <Text style={styles.navLink}>Standings</Text>
+            </Pressable>
             <Pressable onPress={() => router.push('/privacy')}>
               <Text style={styles.navLink}>Privacy Policy</Text>
             </Pressable>
@@ -161,6 +164,9 @@ export function LandingPage() {
             <Text style={styles.footerWordmark}>BEACON</Text>
           </View>
           <View style={styles.navLinks}>
+            <Pressable onPress={() => router.push('/watch' as any)}>
+              <Text style={styles.navLink}>Standings</Text>
+            </Pressable>
             <Pressable onPress={() => router.push('/privacy')}>
               <Text style={styles.navLink}>Privacy Policy</Text>
             </Pressable>

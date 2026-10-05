@@ -1148,6 +1148,14 @@ export type Database = {
       }
       lock_overdue_lineups: { Args: never; Returns: undefined }
       placement_points: { Args: { p_placement: number }; Returns: number }
+      poll_observer_streams: { Args: never; Returns: undefined }
+      public_observer_handle: {
+        Args: { p_profile_id: string }
+        Returns: {
+          display_name: string
+          twitch_login: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
@@ -1160,7 +1168,7 @@ export type Database = {
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-type DefaultSchema = DatabaseWithoutInternals["public"]
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
@@ -1274,3 +1282,9 @@ export type CompositeTypes<
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const
