@@ -8,12 +8,15 @@ const DEFAULT_DESCRIPTION =
   'Beacon runs competitive Apex Legends and Valorant leagues in Ireland — team registration, lineup management, live match monitoring and EA/Riot-verified standings, all in one app.';
 
 // Expo Router's static web export wraps every pre-rendered route in this
-// document shell once at build time (not per-route — individual screens
-// override <title>/<meta description> on top of this via expo-router/head,
-// see LandingPage.tsx). Metadata needs to live in the raw HTML, not just
-// get set client-side after hydration, so that crawlers and link-preview
-// bots that don't run JS (most of them, still, in practice) see a real
-// title/description/OG image instead of Beacon's loading spinner.
+// document shell once at build time — the same title/description/OG tags
+// apply site-wide, deliberately not per-route (expo-router/head's <Head>
+// was tried for per-page overrides and reverted: it threw a React
+// hydration error and blanked the client-side tab title, a pre-existing
+// framework issue independent of this file). Metadata needs to live in
+// the raw HTML, not just get set client-side after hydration, so that
+// crawlers and link-preview bots that don't run JS (most of them, still,
+// in practice) see a real title/description/OG image instead of Beacon's
+// loading spinner.
 export default function Root({ children }: PropsWithChildren) {
   return (
     <html lang="en-IE">
@@ -23,6 +26,7 @@ export default function Root({ children }: PropsWithChildren) {
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         <meta name="theme-color" content="#101114" />
         <meta name="robots" content="index, follow" />
+        <meta name="google-site-verification" content="xhv5rjOkSNDh5KisIRmu_D1041CybJaAOvfPQnNST3A" />
 
         <title>{DEFAULT_TITLE}</title>
         <meta name="description" content={DEFAULT_DESCRIPTION} />
