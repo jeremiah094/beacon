@@ -34,8 +34,8 @@ export default function PublicWatchIndex() {
       </View>
 
       <View style={styles.header}>
-        <Text style={styles.title}>WATCH</Text>
-        <Text style={styles.subtitle}>Live standings and results for every published Beacon league.</Text>
+        <Text style={styles.title} role="heading" aria-level={1}>WATCH</Text>
+        <Text style={styles.subtitle}>Live standings and results for every published Irish Apex Legends and Valorant league on Beacon.</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.list}>

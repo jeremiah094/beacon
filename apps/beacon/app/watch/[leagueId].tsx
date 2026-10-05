@@ -63,7 +63,7 @@ export default function PublicWatchLeague() {
             <View style={[styles.titleDot, { backgroundColor: accent.accent }]} />
             <Text style={[styles.titleChipLabel, { color: accent.accent }]}>{league.titleName.toUpperCase()}</Text>
           </View>
-          <Text style={styles.leagueName}>{league.name}</Text>
+          <Text style={styles.leagueName} role="heading" aria-level={1}>{league.name}</Text>
           <Text style={styles.leagueMeta}>
             {league.region}
             {league.seasonLabel ? ` · ${league.seasonLabel}` : ''}

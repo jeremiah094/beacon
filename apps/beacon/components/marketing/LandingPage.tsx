@@ -11,8 +11,8 @@ import { color, fontFamily } from '../../theme/tokens';
 const FEATURES: { icon: keyof typeof Ionicons.glyphMap; title: string; body: string }[] = [
   {
     icon: 'shield-checkmark-outline',
-    title: 'EA-verified stats',
-    body: 'Link your EA or Apex Legends ID and your rank, K/D and wins are read straight from your account — not typed in by hand.',
+    title: 'EA & Riot-verified stats',
+    body: 'Link your EA/Apex Legends or Riot/Valorant ID and your rank, K/D and wins are read straight from your account — not typed in by hand.',
   },
   {
     icon: 'people-outline',
@@ -27,17 +27,57 @@ const FEATURES: { icon: keyof typeof Ionicons.glyphMap; title: string; body: str
   {
     icon: 'trophy-outline',
     title: 'Standings that update themselves',
-    body: 'Placements and kills feed straight into league standings the moment results are published.',
+    body: 'Results feed straight into live league standings the moment they’re published — public and free to follow at /watch.',
   },
   {
     icon: 'grid-outline',
     title: 'A real admin console',
-    body: 'League organisers get scheduling, approvals, results verification and settings built for running a league — not a spreadsheet.',
+    body: 'League organisers get scheduling, approvals, results verification and settings built for running an Irish esports league — not a spreadsheet.',
   },
   {
     icon: 'logo-discord',
     title: 'Sign in your way',
     body: 'Email and password, or sign in with Discord — whichever is faster for you.',
+  },
+];
+
+const GAMES = [
+  {
+    name: 'Apex Legends',
+    tagline: 'Battle royale · trios · 20 teams',
+    body: 'Ireland’s longest-running Apex Legends league on Beacon — EA-verified rank, K/D and placement, every season.',
+  },
+  {
+    name: 'Valorant',
+    tagline: '5v5 tactical shooter',
+    body: 'Riot-verified Valorant leagues with best-of series, live map scores and Twitch-ready observer streams.',
+  },
+];
+
+const FAQS = [
+  {
+    q: 'What is Beacon?',
+    a: 'Beacon is an esports league platform built for Ireland — it runs competitive Apex Legends and Valorant leagues, handling team registration, lineup management, live match monitoring and verified standings in one place.',
+  },
+  {
+    q: 'How do I join an esports league in Ireland on Beacon?',
+    a: 'Sign in, link your EA (Apex Legends) or Riot (Valorant) account for verification, then create or join a team and register it for an open league. Captains can register a team the moment they’ve got a full roster.',
+  },
+  {
+    q: 'Which games does Beacon support?',
+    a: 'Apex Legends and Valorant today, with CS2 and Rocket League planned. Every title gets the same team registration, lineup and standings flow.',
+  },
+  {
+    q: 'Is Beacon free to use?',
+    a: 'Yes — creating an account, registering a team and playing in a Beacon league is free. Standings and live results at /watch are public and don’t require an account at all.',
+  },
+  {
+    q: 'How are Beacon league results verified?',
+    a: 'Apex Legends stats are read directly from EA’s API once you link your account; Valorant stats are read from Riot’s API. Results aren’t self-reported or typed in by a captain — a verified badge means the number came from the game itself.',
+  },
+  {
+    q: 'Can I run my own esports league in Ireland on Beacon?',
+    a: 'Beacon’s admin console covers scheduling, team approvals, results verification and league settings for organisers running their own Apex Legends or Valorant competition — get in touch to set one up.',
   },
 ];
 
@@ -87,13 +127,15 @@ export function LandingPage() {
         <View style={styles.hero}>
           <View style={styles.heroBadge}>
             <Diamond size={9} color={color.ember} />
-            <Text style={styles.heroBadgeLabel}>IRELAND'S APEX LEGENDS LEAGUE</Text>
+            <Text style={styles.heroBadgeLabel}>IRELAND'S ESPORTS LEAGUE PLATFORM</Text>
           </View>
-          <Text style={styles.heroHeadline}>Competitive Apex,{'\n'}organised properly.</Text>
+          <Text style={styles.heroHeadline} role="heading" aria-level={1}>
+            Irish esports,{'\n'}organised properly.
+          </Text>
           <Text style={styles.heroSubhead}>
-            Beacon replaces the spreadsheets, Discord threads and screenshots with one place to register a
-            team, submit a lineup, play your match, and see real, EA-verified standings — built for
-            Ireland's Apex Legends community.
+            Beacon runs competitive Apex Legends and Valorant leagues for Ireland's esports community —
+            replacing the spreadsheets, Discord threads and screenshots with one place to register a team,
+            submit a lineup, play your match, and see real, EA/Riot-verified standings.
           </Text>
           <View style={styles.heroActions}>
             <Pressable onPress={goToSignIn}>
@@ -115,16 +157,30 @@ export function LandingPage() {
 
         <View style={styles.mission}>
           <Text style={styles.missionEyebrow}>WHY BEACON</Text>
-          <Text style={styles.missionHeadline}>
+          <Text style={styles.missionHeadline} role="heading" aria-level={2}>
             Every league we'd played in ran on trust — a captain's word, a screenshot, a spreadsheet
             someone forgot to update.
           </Text>
           <Text style={styles.missionBody}>
-            Beacon's goal is simple: give Ireland's Apex Legends players a league platform where results
-            are verified, not argued about, and where running a league doesn't mean chasing screenshots in
-            a Discord server. Every stat shown with a verified badge was read from a real account. Every
-            published result feeds standings automatically. Every admin action is auditable.
+            Beacon's goal is simple: give Ireland's esports players — Apex Legends and Valorant alike — a
+            league platform where results are verified, not argued about, and where running a league
+            doesn't mean chasing screenshots in a Discord server. Every stat shown with a verified badge
+            was read from a real account. Every published result feeds standings automatically. Every
+            admin action is auditable.
           </Text>
+        </View>
+
+        <View style={styles.gamesSection}>
+          <Text style={styles.missionEyebrow}>GAMES WE RUN</Text>
+          <View style={styles.gamesGrid}>
+            {GAMES.map((g) => (
+              <HudPanel key={g.name} style={styles.gameCard} contentStyle={{ gap: 10 }}>
+                <Text style={styles.gameName}>{g.name}</Text>
+                <Text style={styles.gameTagline}>{g.tagline}</Text>
+                <Text style={styles.gameBody}>{g.body}</Text>
+              </HudPanel>
+            ))}
+          </View>
         </View>
 
         <View style={styles.featuresSection}>
@@ -138,6 +194,16 @@ export function LandingPage() {
               </HudPanel>
             ))}
           </View>
+        </View>
+
+        <View style={styles.faqSection}>
+          <Text style={styles.missionEyebrow}>QUESTIONS</Text>
+          {FAQS.map((f) => (
+            <View key={f.q} style={styles.faqItem}>
+              <Text style={styles.faqQuestion} role="heading" aria-level={3}>{f.q}</Text>
+              <Text style={styles.faqAnswer}>{f.a}</Text>
+            </View>
+          ))}
         </View>
 
         <View style={styles.ctaBand}>
@@ -174,7 +240,9 @@ export function LandingPage() {
               <Text style={styles.navLink}>Terms of Service</Text>
             </Pressable>
           </View>
-          <Text style={styles.footerCopy}>© {new Date().getFullYear()} Beacon. Not affiliated with Electronic Arts or Respawn Entertainment.</Text>
+          <Text style={styles.footerCopy}>
+            © {new Date().getFullYear()} Beacon. Not affiliated with Electronic Arts, Respawn Entertainment, Riot Games or VALORANT Esports.
+          </Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -226,11 +294,23 @@ const styles = StyleSheet.create({
   missionHeadline: { fontFamily: fontFamily.rajdhaniSemiBold, fontSize: 26, lineHeight: 32, color: color.textPrimary },
   missionBody: { fontFamily: fontFamily.interRegular, fontSize: 15, lineHeight: 23, color: color.textMuted },
 
+  gamesSection: { paddingHorizontal: 24, paddingVertical: 40, gap: 22, maxWidth: 1040, alignSelf: 'center', width: '100%' },
+  gamesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
+  gameCard: { width: 320, flexGrow: 1 },
+  gameName: { fontFamily: fontFamily.rajdhaniBold, fontSize: 22, color: color.textPrimary },
+  gameTagline: { fontFamily: fontFamily.interSemiBold, fontSize: 11, letterSpacing: 0.1 * 11, color: color.ember },
+  gameBody: { fontFamily: fontFamily.interRegular, fontSize: 13, lineHeight: 19, color: color.textMuted },
+
   featuresSection: { paddingHorizontal: 24, paddingVertical: 40, gap: 22, maxWidth: 1040, alignSelf: 'center', width: '100%' },
   featuresGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 },
   featureCard: { width: 300, flexGrow: 1 },
   featureTitle: { fontFamily: fontFamily.rajdhaniSemiBold, fontSize: 18, color: color.textPrimary },
   featureBody: { fontFamily: fontFamily.interRegular, fontSize: 13, lineHeight: 19, color: color.textMuted },
+
+  faqSection: { paddingHorizontal: 24, paddingVertical: 48, gap: 22, maxWidth: 760, alignSelf: 'center', width: '100%', borderTopWidth: 1, borderTopColor: color.hairline },
+  faqItem: { gap: 7 },
+  faqQuestion: { fontFamily: fontFamily.rajdhaniSemiBold, fontSize: 18, color: color.textPrimary },
+  faqAnswer: { fontFamily: fontFamily.interRegular, fontSize: 14, lineHeight: 21, color: color.textMuted },
 
   ctaBand: {
     paddingHorizontal: 24,
