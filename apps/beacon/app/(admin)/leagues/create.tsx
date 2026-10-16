@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { AdminShell } from '../../../components/admin/AdminShell';
+import { AdminShell, useAdminIsMobile } from '../../../components/admin/AdminShell';
 import { AdminButton } from '../../../components/admin/AdminButton';
 import { AdminChip } from '../../../components/admin/AdminChip';
 import { AdminDateField } from '../../../components/admin/AdminDateField';
@@ -42,6 +42,7 @@ export default function CreateOrEditLeague() {
   const existingTitle = existing?.titles as { slug?: string; format_type?: string } | null | undefined;
   const title = titleMeta(existingTitle?.slug ?? activeAdminTitleSlug ?? 'apex');
   const isHeadToHead = title.formatType === 'head_to_head';
+  const isMobile = useAdminIsMobile();
 
   const [name, setName] = useState('');
   const [seasonLabel, setSeasonLabel] = useState('Season 1');
@@ -225,7 +226,7 @@ export default function CreateOrEditLeague() {
         </View>
       )}
 
-      <View style={styles.fieldRow2}>
+      <View style={[styles.fieldRow2, isMobile && styles.stack]}>
         <Field label="League name">
           <TextInput value={name} onChangeText={setName} placeholder="e.g. Beacon Division Two" placeholderTextColor={color.fillPlaceholder} style={styles.input} />
         </Field>
@@ -245,13 +246,13 @@ export default function CreateOrEditLeague() {
 
       {isHeadToHead ? (
         <Field label="Format">
-          <View style={styles.formatBox}>
-            <View style={{ gap: 6, flex: 1 }}>
+          <View style={[styles.formatBox, isMobile && styles.stack]}>
+            <View style={[{ gap: 6 }, !isMobile && { flex: 1 }]}>
               <Text style={styles.formatTitle}>Head-to-head · round robin</Text>
               <Text style={styles.formatDesc}>Every team plays every other team. Choose how many times below — Schedule generates the fixtures from this once teams are approved.</Text>
             </View>
-            <View style={styles.formatDivider} />
-            <View style={{ gap: 11, flex: 1.2 }}>
+            <View style={[styles.formatDivider, isMobile && styles.formatDividerMobile]} />
+            <View style={[{ gap: 11 }, !isMobile && { flex: 1.2 }]}>
               <View style={styles.stepperRow}>
                 <Text style={styles.stepperLabel}>TEAMS IN LEAGUE</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -280,13 +281,13 @@ export default function CreateOrEditLeague() {
         </Field>
       ) : (
         <Field label="Format">
-          <View style={styles.formatBox}>
-            <View style={{ gap: 6, flex: 1 }}>
+          <View style={[styles.formatBox, isMobile && styles.stack]}>
+            <View style={[{ gap: 6 }, !isMobile && { flex: 1 }]}>
               <Text style={styles.formatTitle}>Battle royale · trios</Text>
               <Text style={styles.formatDesc}>Fixed. Apex league play is trios sharing one lobby — there is no head-to-head fixture.</Text>
             </View>
-            <View style={styles.formatDivider} />
-            <View style={{ gap: 11, flex: 1.2 }}>
+            <View style={[styles.formatDivider, isMobile && styles.formatDividerMobile]} />
+            <View style={[{ gap: 11 }, !isMobile && { flex: 1.2 }]}>
               <View style={styles.stepperRow}>
                 <Text style={styles.stepperLabel}>TEAMS PER LOBBY</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -309,16 +310,16 @@ export default function CreateOrEditLeague() {
       )}
 
       <Field label="Season dates">
-        <View style={styles.dateRow}>
-          <View style={{ flex: 1, gap: 7 }}>
+        <View style={[styles.dateRow, isMobile && styles.stack]}>
+          <View style={[{ gap: 7 }, !isMobile && { flex: 1 }]}>
             <Text style={styles.dateLabel}>STARTS</Text>
             <AdminDateField value={startDate} onChange={setStartDate} />
           </View>
-          <View style={{ flex: 1, gap: 7 }}>
+          <View style={[{ gap: 7 }, !isMobile && { flex: 1 }]}>
             <Text style={styles.dateLabel}>ENDS</Text>
             <AdminDateField value={endDate} onChange={setEndDate} />
           </View>
-          <View style={{ flex: 1, gap: 7 }}>
+          <View style={[{ gap: 7 }, !isMobile && { flex: 1 }]}>
             <Text style={styles.dateLabel}>DURATION</Text>
             <View style={styles.durationBox}>
               <Text style={styles.durationText}>{durationLabel(startDate, endDate)}</Text>
@@ -355,7 +356,7 @@ export default function CreateOrEditLeague() {
           <CornerCut cut={16} fill={color.panel} strokeColor="rgba(62,213,152,0.4)">
             <View style={styles.scoringContent}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 12 }}>
-                <View style={{ gap: 5 }}>
+                <View style={{ gap: 5, flexShrink: 1 }}>
                   <Text style={styles.scoringTitle}>ALGS placement + kills</Text>
                   <Text style={styles.scoringDesc}>Standard competitive Apex scoring. Matches what teams already know from pro play.</Text>
                 </View>
@@ -432,6 +433,9 @@ function durationLabel(start: string, end: string): string {
 
 const styles = StyleSheet.create({
   fieldRow2: { flexDirection: 'row', gap: 20 },
+  // Phones: side-by-side fields and the format box's two halves stack.
+  stack: { flexDirection: 'column', alignItems: 'stretch' },
+  formatDividerMobile: { width: 'auto', height: 1 },
   fieldLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.16 * 10, textTransform: 'uppercase', color: color.textMuted },
   input: { height: 48, backgroundColor: color.panel, borderWidth: 1, borderColor: color.hairlineInput, color: color.textPrimary, fontSize: 15, paddingHorizontal: 14, flex: 1, fontFamily: fontFamily.interRegular },
   chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

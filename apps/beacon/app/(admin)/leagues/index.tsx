@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { StyleSheet } from 'react-native';
-import { AdminShell } from '../../../components/admin/AdminShell';
+import { AdminShell, useAdminIsMobile } from '../../../components/admin/AdminShell';
 import { AdminButton } from '../../../components/admin/AdminButton';
 import { AdminChip } from '../../../components/admin/AdminChip';
 import { PasswordConfirmPanel } from '../../../components/PasswordConfirmPanel';
@@ -84,18 +84,19 @@ export default function AdminLeaguesList() {
 }
 
 function LeagueRow({ league: l, onDelete }: { league: AdminLeagueSummary; onDelete: () => void }) {
+  const isMobile = useAdminIsMobile();
   return (
     <Pressable onPress={() => router.push(`/(admin)/leagues/${l.id}/teams` as any)}>
       {({ hovered }: any) => (
-        <View style={[styles.row, hovered && { backgroundColor: 'rgba(242,241,236,0.04)' }]}>
-          <View style={{ gap: 4, flex: 1, minWidth: 0 }}>
+        <View style={[styles.row, isMobile && styles.rowMobile, hovered && { backgroundColor: 'rgba(242,241,236,0.04)' }]}>
+          <View style={[{ gap: 4, minWidth: 0 }, isMobile ? styles.rowNameMobile : { flex: 1 }]}>
             <Text style={styles.rowName}>{l.name}</Text>
             <Text style={styles.rowMeta}>
               {l.registeredTeams} approved · {l.pendingTeams} pending
             </Text>
           </View>
           <AdminChip label={l.status.toUpperCase()} tone={l.status === 'published' ? 'verified' : 'neutral'} />
-          <View style={{ flexDirection: 'row', gap: 8 }}>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             <AdminButton
               label="Edit"
               variant="secondary"
@@ -118,6 +119,10 @@ function LeagueRow({ league: l, onDelete }: { league: AdminLeagueSummary; onDele
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 18, paddingHorizontal: 20, backgroundColor: color.panel },
+  // Phones: name and counts take the full width, status and actions wrap
+  // onto the lines below instead of squeezing the name to one letter wide.
+  rowMobile: { flexWrap: 'wrap', gap: 12, padding: 16, paddingHorizontal: 16 },
+  rowNameMobile: { flexBasis: '100%' },
   deleteRow: { padding: 18, paddingHorizontal: 20, backgroundColor: color.panel },
   rowName: { fontFamily: fontFamily.rajdhaniSemiBold, fontSize: 19, color: color.textPrimary },
   rowMeta: { fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted },

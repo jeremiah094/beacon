@@ -49,6 +49,14 @@ const NAV_ITEMS: { key: AdminNavKey; label: string; icon: keyof typeof Ionicons.
 // collapsible drawer and a stacked rail instead of the 3-column layout.
 const MOBILE_BREAKPOINT = 860;
 
+/** True below the width where AdminShell switches to its phone layout —
+ * screens use it to stack rows, wrap action buttons and swap wide tables
+ * for cards at the same breakpoint as the shell itself. */
+export function useAdminIsMobile() {
+  const { width } = useWindowDimensions();
+  return width < MOBILE_BREAKPOINT;
+}
+
 export function AdminShell({
   active,
   activeLeagueId,
@@ -64,8 +72,7 @@ export function AdminShell({
   const { userId } = useSession();
   const { data: counts } = useAdminNavCounts();
   const { data: profile } = useAdminProfile(userId);
-  const { width } = useWindowDimensions();
-  const isMobile = width < MOBILE_BREAKPOINT;
+  const isMobile = useAdminIsMobile();
   const [navOpen, setNavOpen] = useState(false);
   const { activeAdminTitleSlug } = useActiveAdminTitle();
   const activeTitle = getTitleMeta(activeAdminTitleSlug ?? 'apex');
@@ -221,31 +228,39 @@ export function AdminShell({
               {titleMeta ? <Text style={styles.titleMeta}>{titleMeta}</Text> : null}
             </View>
           </View>
-          {actions ? <View style={styles.actionsRow}>{actions}</View> : null}
+          {actions ? <View style={[styles.actionsRow, isMobile && styles.actionsRowMobile]}>{actions}</View> : null}
         </View>
 
         {belowTopBar}
 
-        <View style={[styles.body, isMobile && styles.bodyMobile]}>
+        {isMobile ? (
+          // One page-level scroll on phones: two stacked ScrollViews each
+          // got a share of the viewport height, so long lists were clipped
+          // inside their own little scroll area with the rail below them.
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ flexGrow: 1 }}>
+            <View style={[styles.mainScroll, styles.mainScrollMobile]}>{children}</View>
+            {rail ? <View style={[styles.railScroll, styles.railMobile]}>{rail}</View> : null}
+          </ScrollView>
+        ) : (
+        <View style={styles.body}>
           <ScrollView
             contentContainerStyle={[
               styles.mainScroll,
-              isMobile && styles.mainScrollMobile,
-              !!rail && !isMobile && { borderRightWidth: 1, borderRightColor: color.hairline },
-              !!rail && isMobile && { borderBottomWidth: 1, borderBottomColor: color.hairline },
+              !!rail && { borderRightWidth: 1, borderRightColor: color.hairline },
             ]}
           >
             {children}
           </ScrollView>
           {rail ? (
             <ScrollView
-              style={isMobile ? { width: '100%', flexGrow: 0 } : { width: railWidth, flexGrow: 0 }}
+              style={{ width: railWidth, flexGrow: 0 }}
               contentContainerStyle={styles.railScroll}
             >
               {rail}
             </ScrollView>
           ) : null}
         </View>
+        )}
       </View>
     </View>
   );
@@ -336,7 +351,9 @@ const styles = StyleSheet.create({
     gap: 24,
     flexWrap: 'wrap',
   },
-  topBarMobile: { padding: 16, gap: 14 },
+  // Stacked on phones: actions sharing the row with the title squeezed the
+  // title into a narrow column.
+  topBarMobile: { padding: 16, gap: 14, flexDirection: 'column', alignItems: 'stretch' },
   breadcrumbRow: { flexDirection: 'row', alignItems: 'center', gap: 9, flexWrap: 'wrap' },
   breadcrumbSep: { color: 'rgba(242,241,236,0.28)', fontSize: 11 },
   breadcrumbLink: { fontFamily: fontFamily.interRegular, fontSize: 11, color: color.textMuted },
@@ -345,9 +362,10 @@ const styles = StyleSheet.create({
   titleMobile: { fontSize: 24 },
   titleMeta: { fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted },
   actionsRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  actionsRowMobile: { gap: 10 },
   body: { flex: 1, flexDirection: 'row', minWidth: 0 },
-  bodyMobile: { flexDirection: 'column' },
   mainScroll: { flexGrow: 1, padding: 28, gap: 24, alignItems: 'stretch' },
   mainScrollMobile: { padding: 16, gap: 18 },
   railScroll: { padding: 24, gap: 16 },
+  railMobile: { padding: 16, borderTopWidth: 1, borderTopColor: color.hairline },
 });

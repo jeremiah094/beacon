@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ClipboardAPI from 'expo-clipboard';
-import { AdminShell } from '../../../../components/admin/AdminShell';
+import { AdminShell, useAdminIsMobile } from '../../../../components/admin/AdminShell';
 import { AdminButton } from '../../../../components/admin/AdminButton';
 import { AdminChip } from '../../../../components/admin/AdminChip';
 import { AdminSelectField } from '../../../../components/admin/AdminSelectField';
@@ -36,6 +36,11 @@ export default function MonitorLiveMatch() {
   const { data: game, isLoading } = useMonitorGame(gameId);
   const advance = useAdvanceGamePhase(gameId);
   const decideSub = useDecideSubstitution(gameId);
+  const isMobile = useAdminIsMobile();
+  // Beside the sidebar and the Needs-attention rail the checklist column
+  // is ~620px at 1280 — too narrow for five columns, so it switches to
+  // two-line rows below this width.
+  const compactTable = useWindowDimensions().width < 1500;
   const setLobbyCode = useSetLobbyCode(gameId);
   const setLobbyPresence = useSetLobbyPresence(gameId);
 
@@ -157,8 +162,8 @@ export default function MonitorLiveMatch() {
         />
       }
       belowTopBar={
-        <View style={styles.statusStrip}>
-          <View style={{ gap: 11 }}>
+        <View style={[styles.statusStrip, isMobile && styles.statusStripMobile]}>
+          <View style={[{ gap: 11 }, isMobile && { flexBasis: '100%' }]}>
             <Text style={styles.stripLabel}>GAME STATUS</Text>
             <View style={{ flexDirection: 'row' }}>
               {PHASES.map((label, i) => (
@@ -181,14 +186,14 @@ export default function MonitorLiveMatch() {
             </Text>
           </View>
 
-          <View style={styles.stripDivider} />
+          {!isMobile && <View style={styles.stripDivider} />}
 
           <View style={{ gap: 8 }}>
             <Text style={[styles.stripLabel, { color: clockCritical ? color.ember : color.textMuted }]}>{clockCritical ? 'MATCH STARTS IN' : 'ELAPSED'}</Text>
             <Text style={[styles.clock, { color: clockCritical ? color.ember : color.textPrimary }, tabularNums]}>{clock}</Text>
           </View>
 
-          <View style={styles.stripDivider} />
+          {!isMobile && <View style={styles.stripDivider} />}
 
           <View style={{ gap: 9 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
@@ -242,7 +247,7 @@ export default function MonitorLiveMatch() {
             )}
           </View>
 
-          <View style={styles.stripDivider} />
+          {!isMobile && <View style={styles.stripDivider} />}
 
           <View style={{ gap: 9 }}>
             <Text style={[styles.stripLabel, { color: game.streamLive ? color.ember : color.textMuted }]}>OBSERVER STREAM</Text>
@@ -269,8 +274,8 @@ export default function MonitorLiveMatch() {
 
           {pendingSubs.map((t) => (
             <View key={t.teamId} style={styles.issueCard}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-                <View style={{ gap: 4 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+                <View style={{ gap: 4, flexShrink: 1, minWidth: 0 }}>
                   <Text style={styles.issueName}>{t.name}</Text>
                   <Text style={styles.issueCaptain}>Captain {t.captainName}</Text>
                 </View>
@@ -364,6 +369,45 @@ export default function MonitorLiveMatch() {
         </View>
       </View>
 
+      {compactTable ? (
+        <View style={styles.table}>
+          {visible.map((t, i) => {
+            const needsHelp = t.lineupState === 'sub_pending';
+            return (
+              <View key={t.teamId} style={[styles.compactRow, needsHelp && { backgroundColor: color.panel, borderLeftWidth: 2, borderLeftColor: color.ember }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                  <Text style={[styles.rowIndex, { width: 'auto' }, tabularNums]}>{String(i + 1).padStart(2, '0')}</Text>
+                  <View style={{ gap: 2, flex: 1, minWidth: 0 }}>
+                    <Text style={[styles.rowName, { color: needsHelp ? color.textPrimary : color.textMuted }]} numberOfLines={1}>{t.name}</Text>
+                    <Text style={styles.rowSub} numberOfLines={1}>
+                      {t.pendingSub ? `Captain ${t.captainName} · requested ${t.pendingSub.inName}` : `Captain ${t.captainName}`}
+                    </Text>
+                  </View>
+                  <LineupPill state={t.lineupState} />
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <AdminSelectField
+                    value={t.inLobbyStatus ?? ''}
+                    options={LOBBY_STATUS_OPTIONS}
+                    placeholder="Unknown"
+                    onChange={(v) => updateLobbyPresence(t, v)}
+                    style={{ width: 150 }}
+                  />
+                  {t.pendingSub ? (
+                    <Pressable onPress={() => approveSub(t)} disabled={decideSub.isPending}>
+                      <View style={styles.rowActionBtn}>
+                        <Text style={styles.rowActionLabel}>APPROVE SUB</Text>
+                      </View>
+                    </Pressable>
+                  ) : t.inLobbyStatus === 'in_lobby' ? (
+                    <AdminChip label="CHECKED" tone="verified" dotShape="diamond" />
+                  ) : null}
+                </View>
+              </View>
+            );
+          })}
+        </View>
+      ) : (
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }}>
       <View style={[styles.table, { minWidth: 640 }]}>
         <View style={styles.tableHeaderRow}>
@@ -378,13 +422,16 @@ export default function MonitorLiveMatch() {
           return (
             <View key={t.teamId} style={[styles.tableRow, needsHelp && { backgroundColor: color.panel, borderLeftWidth: 2, borderLeftColor: color.ember }]}>
               <Text style={[styles.rowIndex, tabularNums]}>{String(i + 1).padStart(2, '0')}</Text>
-              <View style={{ gap: 2, minWidth: 0 }}>
+              {/* flex: 1 so every row's later columns line up under the header */}
+              <View style={{ gap: 2, flex: 1, minWidth: 0 }}>
                 <Text style={[styles.rowName, { color: needsHelp ? color.textPrimary : color.textMuted }]} numberOfLines={1}>{t.name}</Text>
                 <Text style={styles.rowSub} numberOfLines={1}>
                   {t.pendingSub ? `Captain ${t.captainName} · requested ${t.pendingSub.inName}` : `Captain ${t.captainName}`}
                 </Text>
               </View>
-              <LineupPill state={t.lineupState} />
+              <View style={{ width: 132 }}>
+                <LineupPill state={t.lineupState} />
+              </View>
               <View style={{ width: 148 }}>
                 <AdminSelectField
                   value={t.inLobbyStatus ?? ''}
@@ -410,6 +457,7 @@ export default function MonitorLiveMatch() {
         })}
       </View>
       </ScrollView>
+      )}
 
       <Text style={styles.footnote}>
         IN LOBBY is set by hand — Beacon has no live read from the private Apex lobby, so a row stays Unknown until an organiser marks it.
@@ -442,6 +490,10 @@ const styles = StyleSheet.create({
   phaseLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.06 * 9 },
   phaseNote: { fontFamily: fontFamily.interRegular, fontSize: 11, lineHeight: 15, color: color.textMuted, ...tabularNums },
   stripDivider: { width: 1, alignSelf: 'stretch', backgroundColor: color.hairline },
+  // Phones: the status block takes a full line and the vertical dividers
+  // (which only make sense side by side) are hidden.
+  statusStripMobile: { paddingHorizontal: 16, columnGap: 20 },
+  compactRow: { gap: 10, padding: 12, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(242,241,236,0.06)' },
   clock: { fontFamily: fontFamily.rajdhaniBold, fontSize: 40, lineHeight: 40 },
   copyLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.08 * 10 },
   codeBox: { flex: 1, height: 52, minWidth: 32, backgroundColor: color.panel, borderWidth: 1, borderColor: color.hairlineInput, alignItems: 'center', justifyContent: 'center' },

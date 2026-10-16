@@ -74,6 +74,13 @@ function ScheduleMatchesApex() {
   const { data: adminProfiles } = useAdminProfiles();
   const { width } = useWindowDimensions();
   const isMobile = width < 860;
+  // The six-column table needs ~1100px, but beside the sidebar and the
+  // publish-preview rail the content column is only ~620px at 1280 —
+  // below this the Actions column sat off-screen in a hidden scroll. Each
+  // game reflows into a wrapping row with inline labels instead.
+  const compactTable = width < 1760;
+  const TableWrap = compactTable ? View : ScrollView;
+  const cellLabel = (text: string) => (compactTable ? <Text style={styles.cellLabel}>{text}</Text> : null);
 
   // The pool set on Settings — falls back to the original hardcoded list
   // while defaults are loading, or if the pool was emptied.
@@ -383,8 +390,9 @@ function ScheduleMatchesApex() {
             <Text style={styles.emptyBody}>No games scheduled yet. Fill the form above and publish the first one.</Text>
           </View>
         ) : (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }}>
-          <View style={[styles.table, { minWidth: 1100 }]}>
+          <TableWrap {...(compactTable ? {} : { horizontal: true, style: { width: '100%' } })}>
+          <View style={[styles.table, !compactTable && { minWidth: 1100 }]}>
+            {!compactTable && (
             <View style={styles.tableHeaderRow}>
               <Text style={[styles.tableHeaderCell, { width: 150 }]}>GAME</Text>
               <Text style={[styles.tableHeaderCell, { width: 150 }]}>LOBBY CODE</Text>
@@ -393,6 +401,7 @@ function ScheduleMatchesApex() {
               <Text style={[styles.tableHeaderCell, { flex: 1 }]}>MAP</Text>
               <Text style={[styles.tableHeaderCell, { width: 296, textAlign: 'right' }]}>ACTIONS</Text>
             </View>
+            )}
             {(games ?? []).map((g) => {
               const cancelled = g.status === 'cancelled';
               const live = g.status === 'in_progress' || g.status === 'lobby_open';
@@ -409,12 +418,13 @@ function ScheduleMatchesApex() {
                       ? 'COMPLETED'
                       : 'SCHEDULED';
               return (
-                <View key={g.id} style={[styles.tableRow, live && { backgroundColor: color.panel }]}>
-                  <View style={{ width: 150, gap: 3 }}>
+                <View key={g.id} style={[styles.tableRow, compactTable && styles.tableRowCompact, live && { backgroundColor: color.panel }]}>
+                  <View style={[{ gap: 3 }, compactTable ? { flexBasis: '100%' } : { width: 150 }]}>
                     <Text style={[styles.rowTitle, { color: fg }]}>Match {g.roundNumber} · Game {g.gameNumber}</Text>
                     <Text style={[styles.rowState, { color: cancelled ? color.textMuted : live ? color.ember : color.textMuted }]}>{stateLabel}</Text>
                   </View>
-                  <View style={{ width: 150 }}>
+                  <View style={compactTable ? styles.compactCell : { width: 150 }}>
+                    {cellLabel('LOBBY CODE')}
                     {editingCodeId === g.id ? (
                       <View style={{ gap: 5 }}>
                         <View style={{ flexDirection: 'row', gap: 6, alignItems: 'center' }}>
@@ -453,7 +463,8 @@ function ScheduleMatchesApex() {
                       </Pressable>
                     )}
                   </View>
-                  <View style={{ width: 160 }}>
+                  <View style={compactTable ? styles.compactCell : { width: 160 }}>
+                    {cellLabel('OBSERVER')}
                     {cancelled || completed ? (
                       <Text style={[styles.rowCode, { color: g.observerId ? fg : color.textMuted }]}>{g.observerName ?? 'None'}</Text>
                     ) : (
@@ -466,9 +477,15 @@ function ScheduleMatchesApex() {
                       />
                     )}
                   </View>
-                  <Text style={[styles.rowWhen, { color: fg }, tabularNums]}>{formatGameWhen(g.scheduledAt)}</Text>
-                  <Text style={styles.rowMap}>{g.map ?? '—'}</Text>
-                  <View style={{ width: 296, flexDirection: 'row', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  <View style={compactTable ? styles.compactCell : undefined}>
+                    {cellLabel('WHEN')}
+                    <Text style={[styles.rowWhen, { color: fg }, tabularNums]}>{formatGameWhen(g.scheduledAt)}</Text>
+                  </View>
+                  <View style={compactTable ? styles.compactCell : { flex: 1 }}>
+                    {cellLabel('MAP')}
+                    <Text style={styles.rowMap}>{g.map ?? '—'}</Text>
+                  </View>
+                  <View style={[{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }, compactTable ? { flexBasis: '100%' } : { width: 296, justifyContent: 'flex-end' }]}>
                     {live && (
                       <Pressable onPress={() => router.push(`/(admin)/games/${g.id}/monitor` as any)}>
                         <AdminChip label="MONITOR" tone="ember" dotShape="circle" />
@@ -501,7 +518,7 @@ function ScheduleMatchesApex() {
               );
             })}
           </View>
-          </ScrollView>
+          </TableWrap>
         )}
       </View>
     </AdminShell>
@@ -696,7 +713,9 @@ function ScheduleFixtures() {
                     const editing = editingId === f.id;
                     return (
                       <View key={f.id} style={[fixtureStyles.row, { backgroundColor: color.panel }]}>
-                        <View style={{ flex: 1, gap: 4, minWidth: 0 }}>
+                        {/* flexBasis, not flex: 1 — a 0 basis let the actions claim the
+                            row on phones and squeezed the team names into a sliver. */}
+                        <View style={{ flexGrow: 1, flexShrink: 1, flexBasis: 280, gap: 4, minWidth: 0 }}>
                           <Text style={[fixtureStyles.rowTitle, cancelled && { color: color.textMuted, textDecorationLine: 'line-through' }]}>
                             {f.homeTeamName} vs {f.awayTeamName}
                           </Text>
@@ -763,7 +782,7 @@ function ScheduleFixtures() {
                             </Pressable>
                           </View>
                         ) : (
-                          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center', flexWrap: 'wrap', flexShrink: 1, maxWidth: '100%' }}>
                             <AdminChip
                               label={cancelled ? 'CANCELLED' : completed ? 'COMPLETED' : 'SCHEDULED'}
                               tone={cancelled ? 'neutral' : completed ? 'verified' : 'neutral'}
@@ -834,6 +853,9 @@ const styles = StyleSheet.create({
   tableHeaderRow: { flexDirection: 'row', gap: 14, padding: 11, paddingHorizontal: 16, backgroundColor: color.panel, borderBottomWidth: 1, borderBottomColor: color.hairline },
   tableHeaderCell: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.12 * 9, color: color.textMuted },
   tableRow: { flexDirection: 'row', gap: 14, alignItems: 'center', padding: 13, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(242,241,236,0.08)' },
+  tableRowCompact: { flexWrap: 'wrap', alignItems: 'flex-start', columnGap: 22, rowGap: 12, padding: 14 },
+  compactCell: { gap: 4, minWidth: 0 },
+  cellLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.12 * 9, color: color.textMuted },
   rowTitle: { fontFamily: fontFamily.rajdhaniSemiBold, fontSize: 14, letterSpacing: 0.02 * 14 },
   rowState: { fontFamily: fontFamily.interRegular, fontSize: 9, letterSpacing: 0.1 * 9 },
   rowWhen: { width: 130, fontFamily: fontFamily.interMedium, fontSize: 12 },
@@ -892,7 +914,7 @@ const fixtureStyles = StyleSheet.create({
   rowTitle: { fontFamily: fontFamily.rajdhaniSemiBold, fontSize: 17, letterSpacing: 0.01 * 17, color: color.textPrimary },
   rowSub: { fontFamily: fontFamily.interRegular, fontSize: 11, color: color.textMuted, ...tabularNums },
   streamLiveText: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: color.ember },
-  editRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, alignItems: 'center' },
+  editRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, alignItems: 'center', flexShrink: 1, maxWidth: '100%' },
   timeChip: { height: 34, paddingHorizontal: 10, borderWidth: 1, borderColor: color.hairlineInput, alignItems: 'center', justifyContent: 'center' },
   timeChipLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 11, color: color.textMuted, ...tabularNums },
   lobbyInput: { height: 34, width: 110, backgroundColor: color.base, borderWidth: 1, borderColor: color.hairlineInput, color: color.textPrimary, fontFamily: fontFamily.interRegular, fontSize: 11, paddingHorizontal: 8 },

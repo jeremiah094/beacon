@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Linking, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ClipboardAPI from 'expo-clipboard';
-import { AdminShell } from '../../../../components/admin/AdminShell';
+import { AdminShell, useAdminIsMobile } from '../../../../components/admin/AdminShell';
 import { AdminButton } from '../../../../components/admin/AdminButton';
 import { AdminChip } from '../../../../components/admin/AdminChip';
 import { Diamond } from '../../../../components/Diamond';
@@ -25,6 +25,7 @@ export default function MonitorFixture() {
   const { data: fixture, isLoading } = useMonitorFixture(fixtureId);
   const advance = useAdvanceFixturePhase(fixtureId);
   const setLobbyCode = useSetMonitorFixtureLobbyCode(fixtureId);
+  const isMobile = useAdminIsMobile();
 
   const [copied, setCopied] = useState(false);
   const [now, setNow] = useState(() => Date.now());
@@ -111,8 +112,8 @@ export default function MonitorFixture() {
         />
       }
       belowTopBar={
-        <View style={styles.statusStrip}>
-          <View style={{ gap: 11 }}>
+        <View style={[styles.statusStrip, isMobile && styles.statusStripMobile]}>
+          <View style={[{ gap: 11 }, isMobile && { flexBasis: '100%' }]}>
             <Text style={styles.stripLabel}>SERIES STATUS</Text>
             <View style={{ flexDirection: 'row' }}>
               {PHASES.map((label, i) => (
@@ -135,14 +136,14 @@ export default function MonitorFixture() {
             </Text>
           </View>
 
-          <View style={styles.stripDivider} />
+          {!isMobile && <View style={styles.stripDivider} />}
 
           <View style={{ gap: 8 }}>
             <Text style={[styles.stripLabel, { color: clockCritical ? color.ember : color.textMuted }]}>{clockCritical ? 'SERIES STARTS IN' : 'ELAPSED'}</Text>
             <Text style={[styles.clock, { color: clockCritical ? color.ember : color.textPrimary }, tabularNums]}>{clock}</Text>
           </View>
 
-          <View style={styles.stripDivider} />
+          {!isMobile && <View style={styles.stripDivider} />}
 
           <View style={{ gap: 9 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', gap: 12 }}>
@@ -196,7 +197,7 @@ export default function MonitorFixture() {
             )}
           </View>
 
-          <View style={styles.stripDivider} />
+          {!isMobile && <View style={styles.stripDivider} />}
 
           <View style={{ gap: 9 }}>
             <Text style={[styles.stripLabel, { color: fixture.streamLive ? color.ember : color.textMuted }]}>OBSERVER STREAM</Text>
@@ -281,6 +282,9 @@ const styles = StyleSheet.create({
   phaseLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.06 * 9 },
   phaseNote: { fontFamily: fontFamily.interRegular, fontSize: 11, lineHeight: 15, color: color.textMuted, ...tabularNums },
   stripDivider: { width: 1, alignSelf: 'stretch', backgroundColor: color.hairline },
+  // Phones: the status block takes a full line and the side-by-side
+  // dividers are hidden.
+  statusStripMobile: { paddingHorizontal: 16, columnGap: 20 },
   clock: { fontFamily: fontFamily.rajdhaniBold, fontSize: 40, lineHeight: 40 },
   copyLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.08 * 10 },
   codeBox: { flex: 1, height: 52, minWidth: 32, backgroundColor: color.panel, borderWidth: 1, borderColor: color.hairlineInput, alignItems: 'center', justifyContent: 'center' },
@@ -309,7 +313,7 @@ const styles = StyleSheet.create({
   scoreTeamName: { flex: 1, fontFamily: fontFamily.interSemiBold, fontSize: 14, color: color.textPrimary },
   scoreValue: { fontFamily: fontFamily.rajdhaniBold, fontSize: 28, color: color.textMuted, ...tabularNums },
   scoreNote: { fontFamily: fontFamily.interRegular, fontSize: 11, lineHeight: 16, color: color.textMuted, borderTopWidth: 1, borderTopColor: color.hairline, paddingTop: 11, marginTop: 4 },
-  sideCard: { flex: 1, minWidth: 260, borderWidth: 1, borderColor: color.hairline, backgroundColor: color.panel, padding: 17, gap: 13 },
+  sideCard: { flexGrow: 1, flexShrink: 1, flexBasis: 260, minWidth: 0, borderWidth: 1, borderColor: color.hairline, backgroundColor: color.panel, padding: 17, gap: 13 },
   sideHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 },
   sideTeamName: { fontFamily: fontFamily.rajdhaniSemiBold, fontSize: 17, letterSpacing: 0.01 * 17, color: color.textPrimary },
   sideCaptain: { fontFamily: fontFamily.interRegular, fontSize: 11, color: color.textMuted },

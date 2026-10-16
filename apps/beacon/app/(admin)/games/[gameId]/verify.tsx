@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { AdminShell } from '../../../../components/admin/AdminShell';
+import { AdminShell, useAdminIsMobile } from '../../../../components/admin/AdminShell';
 import { AdminButton } from '../../../../components/admin/AdminButton';
 import { AdminChip } from '../../../../components/admin/AdminChip';
 import { AdminTallyRow } from '../../../../components/admin/AdminTally';
@@ -29,6 +29,7 @@ export default function VerifyResults() {
   const reopen = useReopenResults(gameId);
   const deleteResult = useDeleteResult(gameId);
   const deleteGame = useDeleteGame(game?.leagueId);
+  const isMobile = useAdminIsMobile();
 
   const [placements, setPlacements] = useState<Record<string, string>>({});
   const [kills, setKills] = useState<Record<string, string>>({});
@@ -125,7 +126,7 @@ export default function VerifyResults() {
               { n: missingRows.length, label: 'MISSING', fg: missingRows.length ? color.ember : color.verified },
             ]}
           />
-          <View style={{ flexDirection: 'row', gap: 18, flexWrap: 'wrap' }}>
+          <View style={{ flexDirection: 'row', gap: 18, flexWrap: 'wrap', flexShrink: 1, maxWidth: '100%' }}>
             <LegendItem shape="diamond" color={color.verified} label="Read from EA after the lobby closed" />
             <LegendItem shape="square" color={color.textMuted} label="Entered by an organiser — carries your name in the record" />
           </View>
@@ -230,7 +231,7 @@ export default function VerifyResults() {
       }
     >
       <View style={{ flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
-        <View style={{ gap: 5 }}>
+        <View style={{ gap: 5, flexShrink: 1 }}>
           <Text style={styles.sectionLabel}>Per-team result</Text>
           <Text style={styles.editHint}>
             {locked ? 'Locked while published. Reopen for correction to edit placement or kills.' : 'Placement points + 1 per kill. Fill both cells for every team.'}
@@ -250,6 +251,53 @@ export default function VerifyResults() {
         </View>
       )}
 
+      {isMobile ? (
+        // Phones: one two-line row per team instead of a 644px table in a
+        // hidden sideways scroll.
+        <View style={styles.table}>
+          {visible.map((r) => (
+            <View key={r.teamId} style={[styles.mobileRow, r.missing && { backgroundColor: color.panel, borderLeftWidth: 2, borderLeftColor: color.ember }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+                <Text style={[styles.rowName, { flex: 1, minWidth: 0 }]} numberOfLines={1}>{r.teamName}</Text>
+                <AdminChip label={r.missing ? 'MISSING' : 'ADMIN'} tone={r.missing ? 'ember' : 'neutral'} dotShape={r.missing ? 'circle' : 'diamond'} />
+                <Text style={[styles.totalCell, { width: 'auto', minWidth: 32, color: r.missing ? color.ember : color.textPrimary }, tabularNums]}>{r.total ?? '—'}</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+                <View style={{ gap: 4 }}>
+                  <Text style={styles.tableHeaderCell}>PLACE</Text>
+                  <TextInput
+                    value={r.placeRaw}
+                    onChangeText={(v) => setPlacements((s) => ({ ...s, [r.teamId]: v }))}
+                    editable={!locked}
+                    keyboardType="number-pad"
+                    style={[styles.placeInput, !r.placeValid && r.placeRaw !== '' && styles.invalidInput, tabularNums]}
+                  />
+                </View>
+                <View style={{ gap: 4 }}>
+                  <Text style={styles.tableHeaderCell}>KILLS</Text>
+                  <TextInput
+                    value={r.killsRaw}
+                    onChangeText={(v) => setKills((s) => ({ ...s, [r.teamId]: v }))}
+                    editable={!locked}
+                    keyboardType="number-pad"
+                    style={[styles.killsInput, r.missing && r.killsRaw === '' && styles.invalidInput, tabularNums]}
+                  />
+                </View>
+                <Text style={[styles.breakdownCell, { width: 'auto', flex: 1, textAlign: 'left', paddingBottom: 8 }, tabularNums]}>
+                  {r.total != null ? `${placementPoints(r.placeNum)} + ${r.killsNum}` : ''}
+                </Text>
+                {!r.missing && (
+                  <Pressable onPress={() => setDeletingTeamId(r.teamId)}>
+                    <View style={styles.deleteRowBtn}>
+                      <Text style={styles.deleteRowLabel}>Delete</Text>
+                    </View>
+                  </Pressable>
+                )}
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ width: '100%' }}>
       <View style={[styles.table, { minWidth: 644 }]}>
         <View style={styles.tableHeaderRow}>
@@ -295,6 +343,7 @@ export default function VerifyResults() {
         ))}
       </View>
       </ScrollView>
+      )}
 
       {deletingTeamId && (
         <PasswordConfirmPanel
@@ -323,7 +372,7 @@ export default function VerifyResults() {
 
 function LegendItem({ shape, color: c, label }: { shape: 'diamond' | 'square'; color: string; label: string }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, flexShrink: 1, maxWidth: '100%' }}>
       {shape === 'diamond' ? <Diamond size={9} color={c} /> : <View style={{ width: 9, height: 9, borderWidth: 1, borderColor: c }} />}
       <Text style={styles.legendLabel}>{label}</Text>
     </View>
@@ -336,7 +385,8 @@ function formatClockTime(iso: string): string {
 
 const styles = StyleSheet.create({
   provenanceStrip: { paddingVertical: 16, paddingHorizontal: 28, borderBottomWidth: 1, borderBottomColor: color.hairline, backgroundColor: '#0E0F12', flexDirection: 'row', alignItems: 'center', gap: 24, flexWrap: 'wrap' },
-  legendLabel: { fontFamily: fontFamily.interRegular, fontSize: 11, lineHeight: 15, color: color.textMuted },
+  mobileRow: { gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(242,241,236,0.06)' },
+  legendLabel: { flexShrink: 1, fontFamily: fontFamily.interRegular, fontSize: 11, lineHeight: 15, color: color.textMuted },
   sectionLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.16 * 10, textTransform: 'uppercase', color: color.textMuted },
   editHint: { fontFamily: fontFamily.interRegular, fontSize: 11, color: color.textMuted },
   issuesChip: { paddingVertical: 8, paddingHorizontal: 13, borderWidth: 1 },

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { AdminShell } from '../../../../components/admin/AdminShell';
+import { AdminShell, useAdminIsMobile } from '../../../../components/admin/AdminShell';
 import { AdminButton } from '../../../../components/admin/AdminButton';
 import { AdminChip } from '../../../../components/admin/AdminChip';
 import { CornerCut } from '../../../../components/CornerCut';
@@ -21,6 +21,7 @@ export default function VerifyFixture() {
   const { fixtureId } = useLocalSearchParams<{ fixtureId: string }>();
   const { data: fixture, isLoading } = useFixtureDetail(fixtureId);
   const saveMaps = useSaveFixtureMaps(fixture?.leagueId);
+  const isMobile = useAdminIsMobile();
   const reopen = useReopenFixture(fixture?.leagueId);
 
   const [rows, setRows] = useState<MapRow[]>([]);
@@ -174,6 +175,46 @@ export default function VerifyFixture() {
         <Text style={styles.editHint}>Rounds won per map. Leave unplayed maps out — a Bo3 that finished 2–0 only needs 2 rows.</Text>
       </View>
 
+      {isMobile ? (
+        // Phones: the five-column table ran off-screen, so each map becomes
+        // a two-line row with the score boxes labelled by team.
+        <View style={styles.table}>
+          {decorated.map((r) => (
+            <View key={r.mapNumber} style={[styles.mobileMapRow, r.tied && { backgroundColor: color.emberTint }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Text style={[styles.mapNumber, { width: 'auto' }, tabularNums]}>Map {r.mapNumber}</Text>
+                <TextInput
+                  value={r.mapName}
+                  onChangeText={(v) => updateRow(r.mapNumber, { mapName: v })}
+                  placeholder="Name (optional)"
+                  placeholderTextColor={color.fillPlaceholder}
+                  style={[styles.nameInput, { minWidth: 0 }]}
+                />
+                {rows.length > 1 && (
+                  <Pressable onPress={() => removeMap(r.mapNumber)} hitSlop={8}>
+                    <Text style={styles.removeLabel}>Remove</Text>
+                  </Pressable>
+                )}
+              </View>
+              <View style={{ flexDirection: 'row', gap: 10 }}>
+                {([['homeScore', fixture.homeTeamName], ['awayScore', fixture.awayTeamName]] as const).map(([key, team]) => (
+                  <View key={key} style={{ flex: 1, gap: 5, minWidth: 0 }}>
+                    <Text style={styles.tableHeaderCell} numberOfLines={1}>{team.toUpperCase()}</Text>
+                    <TextInput
+                      value={r[key]}
+                      onChangeText={(v) => updateRow(r.mapNumber, { [key]: v })}
+                      keyboardType="number-pad"
+                      placeholder="—"
+                      placeholderTextColor={color.fillPlaceholder}
+                      style={[styles.scoreInput, { width: '100%' }, r.tied && styles.invalidInput, tabularNums]}
+                    />
+                  </View>
+                ))}
+              </View>
+            </View>
+          ))}
+        </View>
+      ) : (
       <View style={styles.table}>
         <View style={styles.tableHeaderRow}>
           <Text style={[styles.tableHeaderCell, { width: 50 }]}>MAP</Text>
@@ -218,6 +259,7 @@ export default function VerifyFixture() {
           </View>
         ))}
       </View>
+      )}
 
       <Pressable onPress={addMap}>
         <Text style={styles.addMapLabel}>+ Add another map</Text>
@@ -243,6 +285,7 @@ const styles = StyleSheet.create({
   table: { borderWidth: 1, borderColor: color.hairline },
   tableHeaderRow: { flexDirection: 'row', gap: 12, padding: 10, paddingHorizontal: 14, backgroundColor: color.panel, borderBottomWidth: 1, borderBottomColor: color.hairline },
   tableHeaderCell: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.12 * 9, color: color.textMuted },
+  mobileMapRow: { gap: 10, padding: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(242,241,236,0.06)' },
   tableRow: { flexDirection: 'row', gap: 12, alignItems: 'center', padding: 10, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(242,241,236,0.06)' },
   mapNumber: { width: 50, fontFamily: fontFamily.rajdhaniBold, fontSize: 16, color: color.textPrimary },
   nameInput: { flex: 1, height: 38, backgroundColor: color.base, borderWidth: 1, borderColor: color.hairlineInput, color: color.textPrimary, fontFamily: fontFamily.interRegular, fontSize: 13, paddingHorizontal: 10 },

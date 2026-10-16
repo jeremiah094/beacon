@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { router, useLocalSearchParams, Redirect } from 'expo-router';
-import { AdminShell } from '../../../../components/admin/AdminShell';
+import { AdminShell, useAdminIsMobile } from '../../../../components/admin/AdminShell';
 import { AdminChip } from '../../../../components/admin/AdminChip';
 import { AdminTallyRow } from '../../../../components/admin/AdminTally';
 import { Spinner } from '../../../../components/Spinner';
@@ -140,12 +140,13 @@ function AdminResultsListApex({ leagueId, league }: { leagueId: string; league: 
 }
 
 function ResultRow({ game: g, onDelete }: { game: ResultsListGame; onDelete: () => void }) {
+  const isMobile = useAdminIsMobile();
   return (
-    <View style={styles.rowOuter}>
-      <Pressable style={{ flex: 1, minWidth: 0 }} onPress={() => router.push(`/(admin)/games/${g.id}/verify` as any)}>
+    <View style={[styles.rowOuter, isMobile && styles.rowOuterMobile]}>
+      <Pressable style={isMobile ? { alignSelf: 'stretch' } : { flex: 1, minWidth: 0 }} onPress={() => router.push(`/(admin)/games/${g.id}/verify` as any)}>
         {({ hovered }: any) => (
-          <View style={[styles.row, hovered && { backgroundColor: 'rgba(242,241,236,0.04)' }]}>
-            <View style={{ gap: 4, flex: 1, minWidth: 0 }}>
+          <View style={[styles.row, isMobile && styles.rowMobile, hovered && { backgroundColor: 'rgba(242,241,236,0.04)' }]}>
+            <View style={[{ gap: 4, minWidth: 0 }, isMobile ? { flexBasis: '100%' } : { flex: 1 }]}>
               <Text style={styles.rowTitle}>
                 Match {g.roundNumber} · Game {g.gameNumber}
               </Text>
@@ -154,7 +155,7 @@ function ResultRow({ game: g, onDelete }: { game: ResultsListGame; onDelete: () 
                 {g.map ? ` · ${g.map}` : ''}
               </Text>
             </View>
-            <View style={{ alignItems: 'flex-end', gap: 4, minWidth: 0 }}>
+            <View style={{ alignItems: isMobile ? 'flex-start' : 'flex-end', gap: 4, minWidth: 0 }}>
               {g.published && g.topTeamName ? (
                 <>
                   <Text style={styles.winnerName} numberOfLines={1}>{g.topTeamName}</Text>
@@ -189,6 +190,10 @@ const styles = StyleSheet.create({
   sectionLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 10, letterSpacing: 0.16 * 10, textTransform: 'uppercase', color: color.textMuted },
   rowOuter: { flexDirection: 'row', alignItems: 'center', backgroundColor: color.panel, paddingRight: 20 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 16, padding: 18, paddingHorizontal: 20 },
+  // Phones: title on its own line, winner and status wrap below it, and
+  // Delete drops under the row instead of squeezing the title.
+  rowOuterMobile: { flexDirection: 'column', alignItems: 'flex-start', paddingRight: 0, paddingBottom: 16, paddingLeft: 16 },
+  rowMobile: { flexWrap: 'wrap', gap: 12, padding: 16, paddingLeft: 0, paddingHorizontal: 0 },
   rowTitle: { fontFamily: fontFamily.rajdhaniSemiBold, fontSize: 19, color: color.textPrimary },
   rowMeta: { fontFamily: fontFamily.interRegular, fontSize: 12, color: color.textMuted },
   winnerName: { fontFamily: fontFamily.interSemiBold, fontSize: 13, color: color.textPrimary },

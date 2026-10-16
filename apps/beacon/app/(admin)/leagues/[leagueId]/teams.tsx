@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
-import { AdminShell } from '../../../../components/admin/AdminShell';
+import { AdminShell, useAdminIsMobile } from '../../../../components/admin/AdminShell';
 import { AdminButton } from '../../../../components/admin/AdminButton';
 import { AdminChip } from '../../../../components/admin/AdminChip';
 import { AdminTallyRow } from '../../../../components/admin/AdminTally';
@@ -236,10 +236,11 @@ function TeamCard({
   const unverified = team.roster.filter((p) => !p.verified);
   const borderColor = team.status === 'approved' ? color.verifiedBorderStrong : team.status === 'rejected' ? color.emberBorderStrong : color.hairline;
   const chipTone = team.status === 'approved' ? 'verified' : team.status === 'rejected' ? 'ember' : 'neutral';
+  const isMobile = useAdminIsMobile();
 
   return (
-    <View style={[styles.card, { borderColor }]}>
-      <View style={styles.cardHeader}>
+    <View style={[styles.card, isMobile && styles.cardMobile, { borderColor }]}>
+      <View style={[styles.cardHeader, isMobile && styles.cardHeaderMobile]}>
         <View style={{ gap: 6, flex: 1, minWidth: 0 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <Text style={styles.teamName}>{team.name}</Text>
@@ -249,12 +250,35 @@ function TeamCard({
             Registered {formatDateTime(team.registeredAt)} · {team.roster.length} players · {region}
           </Text>
         </View>
-        <View style={{ alignItems: 'flex-end', gap: 5 }}>
+        <View style={{ alignItems: isMobile ? 'flex-start' : 'flex-end', gap: 5 }}>
           <Text style={styles.captainLabel}>CAPTAIN</Text>
           <Text style={styles.captainName}>{team.captainName}</Text>
         </View>
       </View>
 
+      {isMobile ? (
+        // Phones: the four-column table overlapped its own columns, so each
+        // player becomes a compact two-line row instead.
+        <View style={styles.rosterTable}>
+          {team.roster.map((p) => (
+            <View key={p.profileId} style={styles.rosterRowMobile}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
+                <View style={styles.initialsBox}>
+                  <Text style={styles.initialsText}>{initialsOf(p.name)}</Text>
+                </View>
+                <View style={{ gap: 2, flex: 1, minWidth: 0 }}>
+                  <Text style={styles.playerName} numberOfLines={1}>{p.name}</Text>
+                  <Text style={styles.playerRole}>{p.role === 'captain' ? 'Captain' : p.role === 'sub' ? 'Sub' : 'Member'}</Text>
+                </View>
+                <AdminChip label={p.verified ? 'VERIFIED' : 'UNVERIFIED'} tone={p.verified ? 'verified' : 'neutral'} dotShape="diamond" />
+              </View>
+              <Text style={[styles.rosterCell, { color: color.textMuted, paddingLeft: 41 }, tabularNums]} numberOfLines={1}>
+                {p.eaId ?? 'Not linked'} · {p.rank ?? 'No rank'}
+              </Text>
+            </View>
+          ))}
+        </View>
+      ) : (
       <View style={styles.rosterTable}>
         <View style={styles.rosterHeaderRow}>
           <Text style={[styles.rosterHeaderCell, { flex: 1.1 }]}>PLAYER</Text>
@@ -283,6 +307,7 @@ function TeamCard({
           </View>
         ))}
       </View>
+      )}
 
       {team.status === 'pending' && unverified.length > 0 && (
         <View style={{ flexDirection: 'row', gap: 9, alignItems: 'flex-start' }}>
@@ -350,8 +375,8 @@ function TeamCard({
           onConfirmed={onConfirmRemove}
         />
       ) : (
-        <View style={styles.resolvedRow}>
-          <View style={{ flexDirection: 'row', gap: 9, alignItems: 'flex-start', flex: 1 }}>
+        <View style={[styles.resolvedRow, isMobile && styles.resolvedRowMobile]}>
+          <View style={[{ flexDirection: 'row', gap: 9, alignItems: 'flex-start' }, !isMobile && { flex: 1 }]}>
             {team.status === 'approved' && <Diamond size={9} color={color.verified} style={{ marginTop: 4 }} />}
             <Text style={[styles.resolvedText, { color: team.status === 'approved' ? color.verified : color.ember }]}>
               {team.status === 'approved'
@@ -406,7 +431,9 @@ const styles = StyleSheet.create({
   emptyTitle: { fontFamily: fontFamily.rajdhaniBold, fontSize: 22, color: color.textPrimary },
   emptyBody: { fontFamily: fontFamily.interRegular, fontSize: 13, lineHeight: 19, color: color.textMuted, maxWidth: 460 },
   card: { borderWidth: 1, backgroundColor: color.panel, padding: 22, gap: 18 },
+  cardMobile: { padding: 16, gap: 14 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 20 },
+  cardHeaderMobile: { flexDirection: 'column', gap: 12 },
   teamName: { fontFamily: fontFamily.rajdhaniBold, fontSize: 22, letterSpacing: 0.01 * 22, color: color.textPrimary },
   teamMeta: { fontFamily: fontFamily.interRegular, fontSize: 12, lineHeight: 16, color: color.textMuted },
   captainLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.12 * 9, color: color.textMuted },
@@ -414,6 +441,7 @@ const styles = StyleSheet.create({
   rosterTable: { borderTopWidth: 1, borderTopColor: color.hairline },
   rosterHeaderRow: { flexDirection: 'row', gap: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(242,241,236,0.08)' },
   rosterHeaderCell: { fontFamily: fontFamily.interSemiBold, fontSize: 9, letterSpacing: 0.12 * 9, color: color.textMuted },
+  rosterRowMobile: { gap: 4, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(242,241,236,0.06)' },
   rosterRow: { flexDirection: 'row', gap: 14, alignItems: 'center', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(242,241,236,0.06)' },
   initialsBox: { width: 26, height: 26, borderWidth: 1, borderColor: color.neutralBorder, alignItems: 'center', justifyContent: 'center' },
   initialsText: { fontFamily: fontFamily.rajdhaniBold, fontSize: 10, color: color.textMuted },
@@ -430,6 +458,7 @@ const styles = StyleSheet.create({
   reasonChipLabel: { fontFamily: fontFamily.interMedium, fontSize: 11, color: color.textMuted },
   noteInput: { minHeight: 74, backgroundColor: color.base, borderWidth: 1, borderColor: color.hairlineInput, color: color.textPrimary, fontFamily: fontFamily.interRegular, fontSize: 13, lineHeight: 19, padding: 12, textAlignVertical: 'top' },
   cancelLabel: { fontFamily: fontFamily.interMedium, fontSize: 13, color: color.textMuted },
+  resolvedRowMobile: { flexDirection: 'column', alignItems: 'flex-start', gap: 12 },
   resolvedRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 16, borderTopWidth: 1, borderTopColor: color.hairline, paddingTop: 16 },
   resolvedText: { fontFamily: fontFamily.interMedium, fontSize: 12, lineHeight: 17 },
   undoLabel: { fontFamily: fontFamily.interSemiBold, fontSize: 12, color: color.textMuted },
