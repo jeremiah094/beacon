@@ -197,6 +197,10 @@ async function fixtureDeliveries(
 
   const deliveries: Delivery[] = [];
   for (const [profileId, entries] of byProfile) {
+    // A player on both teams of one fixture has two entries for it — count
+    // distinct fixtures, and name every team of theirs involved.
+    const fixtureCount = new Set(entries.map((e) => e.fixture.id)).size;
+    const myTeams = [...new Set(entries.map((e) => e.mine))];
     const first = entries[0];
     const f = first.fixture;
     const leagueName = (f.leagues as any)?.name ?? "your league";
@@ -204,18 +208,21 @@ async function fixtureDeliveries(
 
     if (body.type === "new_match") {
       deliveries.push(
-        entries.length === 1
+        fixtureCount === 1
           ? {
               profileId,
               title: "New match scheduled",
               message: `${leagueName} — ${label}, ${formatWhen(f.scheduled_at)}. Best of ${f.best_of}.`,
-              url: `/fixtures`,
+              // The fixture lobby resolves the player's team from the
+              // fixture itself; /fixtures would show whichever title/team
+              // the device last had active (possibly Apex).
+              url: `/fixtures/${f.id}/lobby`,
             }
           : {
               profileId,
               title: `Your ${leagueName} fixtures are out`,
-              message: `${entries.length} matches scheduled for ${first.mine}. First up: ${first.opponent}, ${formatWhen(f.scheduled_at)}.`,
-              url: `/fixtures`,
+              message: `${fixtureCount} matches scheduled for ${myTeams.join(" and ")}. First up: ${first.mine} vs ${first.opponent}, ${formatWhen(f.scheduled_at)}.`,
+              url: `/fixtures/${f.id}/lobby`,
             },
       );
     } else if (body.type === "lock_soon") {

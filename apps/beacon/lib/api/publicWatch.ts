@@ -65,10 +65,15 @@ async function fetchPublicStandings(leagueId: string, formatType: 'battle_royale
     .eq('status', 'approved');
 
   if (formatType === 'head_to_head') {
-    const { data } = await supabase
+    // No teams(name) embed: h2h_standings.team_id comes from a lateral
+    // VALUES in the view, so PostgREST can't trace it to teams and rejects
+    // the embed — names come from approvedTeams instead.
+    const nameByTeam = new Map((approvedTeams ?? []).map((t) => [t.team_id as string, (t.teams as any)?.name as string | undefined]));
+    const { data: rows } = await supabase
       .from('h2h_standings')
-      .select('team_id, series_won, series_lost, maps_won, maps_lost, total_points, teams(name)')
+      .select('team_id, series_won, series_lost, maps_won, maps_lost, total_points')
       .eq('league_id', leagueId);
+    const data = (rows ?? []).map((r) => ({ ...r, teams: { name: nameByTeam.get(r.team_id as string) ?? 'Team' } }));
     const seen = new Set((data ?? []).map((r) => r.team_id));
     const zero = (approvedTeams ?? [])
       .filter((t) => !seen.has(t.team_id))

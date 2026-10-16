@@ -54,13 +54,17 @@ export async function fetchStandings(leagueId: string, myTeamId?: string): Promi
 
   let scored: MergedRow[];
   if (formatType === 'head_to_head') {
+    // No teams(name) embed here: h2h_standings.team_id comes from a lateral
+    // VALUES in the view, so PostgREST can't trace it to teams and rejects
+    // the embed. Names come from the approved-teams query above instead.
+    const nameByTeam = new Map((allTeams ?? []).map((t) => [t.team_id as string, (t.teams as any)?.name as string | undefined]));
     const { data } = await supabase
       .from('h2h_standings')
-      .select('team_id, series_played, series_won, series_lost, maps_won, maps_lost, total_points, teams(name)')
+      .select('team_id, series_played, series_won, series_lost, maps_won, maps_lost, total_points')
       .eq('league_id', leagueId);
     scored = (data ?? []).map((r) => ({
       team_id: r.team_id as string,
-      name: (r.teams as any)?.name ?? 'Team',
+      name: nameByTeam.get(r.team_id as string) ?? 'Team',
       points: r.total_points ?? 0,
       kills: 0,
       played: r.series_played ?? 0,
