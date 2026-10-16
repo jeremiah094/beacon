@@ -6,9 +6,9 @@
 // the live/offline result back with the service-role client. No client
 // ever calls Twitch or holds a token.
 //
-// Games (not fixtures — Valorant has no player-facing fixture screen to
-// deep-link into yet, same gap already flagged elsewhere) also get a push
-// via match-notify the moment a stream transitions offline→live. This is
+// Games and fixtures both also get a push via match-notify the moment a
+// stream transitions offline→live (fixtures notify only their two teams —
+// see match-notify). This is
 // edge-triggered deliberately: the cron polls every minute, so notifying
 // on every "still live" tick would mean a push a minute for the whole
 // broadcast. The prior observer_stream_live value is read before the
@@ -87,11 +87,14 @@ Deno.serve(async (req: Request) => {
   const supabase = createClient(SUPABASE_URL, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
   const checkedAt = new Date().toISOString();
 
-  const gameIds = entries.filter((e) => e.table === "games").map((e) => e.id);
-  const priorLiveByGameId = new Map<string, boolean>();
-  if (gameIds.length > 0) {
-    const { data: priorRows } = await supabase.from("games").select("id, observer_stream_live").in("id", gameIds);
-    for (const r of priorRows ?? []) priorLiveByGameId.set(r.id, r.observer_stream_live);
+  // Keyed by table + id — a game and a fixture are different tables, so
+  // their ids are never compared against each other.
+  const priorLive = new Map<string, boolean>();
+  for (const table of ["games", "fixtures"] as const) {
+    const ids = entries.filter((e) => e.table === table).map((e) => e.id);
+    if (ids.length === 0) continue;
+    const { data: priorRows } = await supabase.from(table).select("id, observer_stream_live").in("id", ids);
+    for (const r of priorRows ?? []) priorLive.set(`${table}:${r.id}`, r.observer_stream_live);
   }
 
   const results = await Promise.all(
@@ -112,15 +115,15 @@ Deno.serve(async (req: Request) => {
         return false;
       }
 
-      if (e.table === "games" && nowLive && !priorLiveByGameId.get(e.id)) {
+      if (nowLive && !priorLive.get(`${e.table}:${e.id}`)) {
         try {
           await fetch(`${SUPABASE_URL}/functions/v1/match-notify`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ type: "stream_live", gameId: e.id }),
+            body: JSON.stringify(e.table === "games" ? { type: "stream_live", gameId: e.id } : { type: "stream_live", fixtureId: e.id }),
           });
         } catch (err) {
-          console.error(`twitch-stream-status: stream_live notify failed for games.${e.id}`, err);
+          console.error(`twitch-stream-status: stream_live notify failed for ${e.table}.${e.id}`, err);
         }
       }
 

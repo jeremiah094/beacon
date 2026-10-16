@@ -50,6 +50,7 @@ export default function LeagueStandings() {
   const showPinned = !expanded && mine && mineIdx >= 8;
   const above = mine && mineIdx > 0 ? data.rows[mineIdx - 1] : null;
   const progressPct = data.totalGames > 0 ? Math.round((data.completedGames / data.totalGames) * 100) : 0;
+  const h2h = data.formatType === 'head_to_head';
 
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
@@ -70,7 +71,7 @@ export default function LeagueStandings() {
         <View style={{ gap: 9 }}>
           <View style={styles.progressRow}>
             <Text style={styles.progressLabel}>
-              STANDINGS AFTER {data.completedGames} OF {data.totalGames} GAMES
+              STANDINGS AFTER {data.completedGames} OF {data.totalGames} {h2h ? 'MATCHES' : 'GAMES'}
             </Text>
             <Text style={[styles.progressPct, tabularNums]}>{progressPct}%</Text>
           </View>
@@ -80,7 +81,7 @@ export default function LeagueStandings() {
             ))}
           </View>
           <View style={styles.progressFooterRow}>
-            <Text style={[styles.progressFooterText, tabularNums]}>Points = placement + kills</Text>
+            <Text style={[styles.progressFooterText, tabularNums]}>{h2h ? '3 pts per series win' : 'Points = placement + kills'}</Text>
             <Text style={[styles.progressFooterText, tabularNums]}>{data.registeredTeams} teams registered</Text>
           </View>
         </View>
@@ -90,12 +91,12 @@ export default function LeagueStandings() {
         <View style={styles.tableHeader}>
           <Text style={[styles.tableHeaderCell, { width: 26 }]}>#</Text>
           <Text style={[styles.tableHeaderCell, { flex: 1 }]}>TEAM</Text>
-          <Text style={[styles.tableHeaderCell, { width: 46, textAlign: 'right' }]}>KILLS</Text>
+          <Text style={[styles.tableHeaderCell, { width: 46, textAlign: 'right' }]}>{h2h ? 'W–L' : 'KILLS'}</Text>
           <Text style={[styles.tableHeaderCell, { width: 52, textAlign: 'right' }]}>PTS</Text>
         </View>
 
         {visible.map((r) => (
-          <TableRow key={r.teamId} row={r} />
+          <TableRow key={r.teamId} row={r} h2h={h2h} />
         ))}
 
         {showPinned && mine && (
@@ -114,7 +115,7 @@ export default function LeagueStandings() {
                     {above ? `${above.points - mine.points} pts behind ${above.name}` : 'Top of the table'}
                   </Text>
                 </View>
-                <Text style={[styles.pinnedKills, tabularNums]}>{mine.kills}</Text>
+                <Text style={[styles.pinnedKills, tabularNums]}>{h2h ? `${mine.seriesWon}–${mine.seriesLost}` : mine.kills}</Text>
                 <Text style={[styles.pinnedPts, tabularNums]}>{mine.points}</Text>
               </View>
             </View>
@@ -130,15 +131,17 @@ export default function LeagueStandings() {
         </Pressable>
 
         <Text style={styles.footnote}>
-          Placement and kill totals are read from EA after each lobby closes. Admin corrections are marked on the results screen.
+          {h2h
+            ? 'Series results are entered by league admins after each match. Ties on points are split by map difference, then maps won.'
+            : 'Placement and kill totals are read from EA after each lobby closes. Admin corrections are marked on the results screen.'}
         </Text>
       </ScrollView>
 
       <View style={styles.dockedFooter}>
-        <Pressable onPress={() => router.push('/(player)/games')}>
+        <Pressable onPress={() => router.push(h2h ? '/(player)/fixtures' : '/(player)/games')}>
           {({ pressed, hovered }: any) => (
             <View style={[styles.nextGameButton, { backgroundColor: pressed ? color.fillActive : hovered ? color.fillHover : color.textPrimary }]}>
-              <Text style={styles.nextGameLabel}>Your next game</Text>
+              <Text style={styles.nextGameLabel}>{h2h ? 'Your next match' : 'Your next game'}</Text>
             </View>
           )}
         </Pressable>
@@ -147,17 +150,16 @@ export default function LeagueStandings() {
   );
 }
 
-function TableRow({ row }: { row: StandingsRow }) {
+function TableRow({ row, h2h }: { row: StandingsRow; h2h: boolean }) {
   const isLeader = row.rank === 1;
   const accent = isLeader ? color.textPrimary : row.isMine ? color.verified : 'transparent';
   const rowBg = isLeader || row.isMine ? color.panel : 'transparent';
   const nameFg = isLeader || row.isMine ? color.textPrimary : color.textMuted;
   const ptsFg = isLeader ? color.textPrimary : row.isMine ? color.verified : color.textMuted;
-  const sub = isLeader
-    ? `Leader · ${row.gamesPlayed} games played`
-    : row.isMine
-      ? `Your team · ${row.gamesPlayed} games played`
-      : `${row.gamesPlayed} games played`;
+  const played = h2h
+    ? `${row.gamesPlayed} ${row.gamesPlayed === 1 ? 'match' : 'matches'} played · ${row.mapDiff > 0 ? '+' : ''}${row.mapDiff} maps`
+    : `${row.gamesPlayed} games played`;
+  const sub = isLeader ? `Leader · ${played}` : row.isMine ? `Your team · ${played}` : played;
 
   return (
     <View style={[styles.row, { backgroundColor: rowBg, borderLeftColor: accent }]}>
@@ -168,7 +170,7 @@ function TableRow({ row }: { row: StandingsRow }) {
         </Text>
         <Text style={[styles.rowSub, tabularNums]}>{sub}</Text>
       </View>
-      <Text style={[styles.rowKills, tabularNums]}>{row.kills}</Text>
+      <Text style={[styles.rowKills, tabularNums]}>{h2h ? `${row.seriesWon}–${row.seriesLost}` : row.kills}</Text>
       <Text style={[styles.rowPts, { color: ptsFg }, tabularNums]}>{row.points}</Text>
     </View>
   );
