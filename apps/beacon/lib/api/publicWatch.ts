@@ -67,14 +67,17 @@ async function fetchPublicStandings(leagueId: string, formatType: 'battle_royale
   if (formatType === 'head_to_head') {
     const { data } = await supabase
       .from('h2h_standings')
-      .select('team_id, series_won, series_lost, total_points, teams(name)')
+      .select('team_id, series_won, series_lost, maps_won, maps_lost, total_points, teams(name)')
       .eq('league_id', leagueId);
     const seen = new Set((data ?? []).map((r) => r.team_id));
     const zero = (approvedTeams ?? [])
       .filter((t) => !seen.has(t.team_id))
-      .map((t) => ({ team_id: t.team_id, series_won: 0, series_lost: 0, total_points: 0, teams: t.teams }));
+      .map((t) => ({ team_id: t.team_id, series_won: 0, series_lost: 0, maps_won: 0, maps_lost: 0, total_points: 0, teams: t.teams }));
+    // Tiebreaks match the in-app standings (lib/api/standings.ts): map
+    // difference, then maps won.
+    const mapDiff = (r: { maps_won: number | null; maps_lost: number | null }) => (r.maps_won ?? 0) - (r.maps_lost ?? 0);
     return [...(data ?? []), ...zero]
-      .sort((a, b) => (b.total_points ?? 0) - (a.total_points ?? 0))
+      .sort((a, b) => (b.total_points ?? 0) - (a.total_points ?? 0) || mapDiff(b) - mapDiff(a) || (b.maps_won ?? 0) - (a.maps_won ?? 0))
       .map((r, i) => ({
         rank: i + 1,
         teamId: r.team_id as string,
